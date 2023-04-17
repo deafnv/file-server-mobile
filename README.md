@@ -1,16 +1,16 @@
 # file_server_mobile
 
-A new Flutter project.
+App meant to be use with [file-server-api](https://github.com/deafnv/file-server-api). Untested with iOS.
 
-## Getting Started
+## Build
 
-This project is a starting point for a Flutter application.
+Replace host with your server domain in `android/app/src/main/AndroidManifest_template.xml`, and rename to `AndroidManifest.xml`. See for details: https://developer.android.com/guide/topics/manifest/queries-element
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```xml
+<queries>
+    <intent>
+        <action android:name="android.intent.action.VIEW" />
+        <data android:scheme="https" android:host="yourdomain.com" android:pathPrefix="/retrieve" />
+    </intent>
+</queries>
+```
