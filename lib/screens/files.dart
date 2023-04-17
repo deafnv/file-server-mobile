@@ -19,8 +19,9 @@ import './video_player.dart';
 enum ContextMenuItems { openinbrowser, copy, delete, rename, move }
 
 class MainPage extends StatefulWidget {
-  const MainPage({super.key, this.currentDir});
+  const MainPage({super.key, required this.scaffoldMessengerKey, this.currentDir});
 
+  final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey;
   final ApiListResponse? currentDir;
 
   @override
@@ -96,6 +97,13 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
+  _snackBar(String message) {
+    final snackBar = SnackBar(
+      content: Text(message),
+    );
+    return snackBar;
+  }
+
   _loadAppBar() {
     if (selectMode) {
       final selectedFilesCount = selectedFiles.length;
@@ -108,6 +116,17 @@ class _MainPageState extends State<MainPage> {
             },
             icon: const Icon(Icons.close)),
         title: Text('$selectedFilesCount File(s) selected'),
+        actions: [
+          IconButton(
+            splashRadius: 24,
+            onPressed: () {
+              selectedFiles = [..._data!.files];
+              setState(() {});
+              ScaffoldMessenger.of(context).showSnackBar(_snackBar('All items selected'));
+            },
+            icon: const Icon(Icons.select_all),
+          ),
+        ],
       );
     } else {
       return AppBar(
@@ -154,9 +173,11 @@ class _MainPageState extends State<MainPage> {
                                 break;
                               case ContextMenuItems.copy:
                                 await RichClipboard.setData(RichClipboardData(
-                                  text: fileUrl,
-                                  //html: '{"action": "copy", "files": [$fileUrl]}', //TODO: Meant for copying files
+                                  text: Uri.parse(fileUrl).toString(),
+                                  //html: '{"action": "copy", "files": [$fileUrl]}', //TODO: Meant for copying files in app, rn copy parsed link
                                 ));
+                                widget.scaffoldMessengerKey.currentState
+                                    ?.showSnackBar(_snackBar('Copied link to clipboard'));
                                 break;
                               default:
                             }
@@ -185,12 +206,17 @@ class _MainPageState extends State<MainPage> {
                     selectedFiles.contains(_data!.files[index])
                         ? selectedFiles.remove(_data!.files[index])
                         : selectedFiles.add(_data!.files[index]);
+                    if (selectedFiles.isEmpty) {
+                      return _setSelectMode(false);
+                    }
                     return setState(() {});
                   }
                   if (_data!.files[index].isDirectory) {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => MainPage(currentDir: _data!.files[index])),
+                      MaterialPageRoute(
+                          builder: (context) => MainPage(
+                              scaffoldMessengerKey: widget.scaffoldMessengerKey, currentDir: _data!.files[index])),
                     );
                   } /* else if (_getIcon(snapshot.data!.files[index]) == Icons.image) { //TODO: Reenable these after improving them
                     final imagePath = snapshot.data!.files[index].path;

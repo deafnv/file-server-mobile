@@ -22,15 +22,18 @@ Future main() async {
   );
   FlutterDownloader.registerCallback(DownloadClass.downloadCallback);
 
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  MyApp({super.key});
+
+  final _scaffoldKey = GlobalKey<ScaffoldMessengerState>();
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scaffoldMessengerKey: _scaffoldKey,
       title: 'File Server',
       theme: ThemeData(
           brightness: Brightness.dark,
@@ -63,55 +66,9 @@ class MyApp extends StatelessWidget {
             selectionColor: Theme.of(context).colorScheme.secondary,
             selectionHandleColor: Theme.of(context).colorScheme.tertiary,
           )),
-      home: const MainPage(),
-    );
-  }
-}
-
-/* class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pressed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+      home: MainPage(
+        scaffoldMessengerKey: _scaffoldKey,
       ),
     );
   }
 }
- */
