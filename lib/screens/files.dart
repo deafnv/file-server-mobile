@@ -4,15 +4,19 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:back_button_interceptor/back_button_interceptor.dart';
+import 'package:rich_clipboard/rich_clipboard.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../types.dart';
 import './image_viewer.dart';
 import './video_player.dart';
+
+enum ContextMenuItems { openinbrowser, copy, delete, rename, move }
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key, this.currentDir});
@@ -130,6 +134,51 @@ class _MainPageState extends State<MainPage> {
                 leading: selectMode && selectedFiles.contains(_data!.files[index])
                     ? const Icon(Icons.done)
                     : Icon(_getIcon(_data!.files[index])),
+                trailing: selectMode
+                    ? null
+                    : Theme(
+                        data: Theme.of(context).copyWith(dividerColor: Colors.white),
+                        child: PopupMenuButton<ContextMenuItems>(
+                          onSelected: (value) async {
+                            final filePath = _data!.files[index].path;
+                            final fileUrl =
+                                _data!.files[index].isDirectory ? '$apiUrl/list$filePath' : '$apiUrl/retrieve$filePath';
+                            switch (value) {
+                              case ContextMenuItems.openinbrowser:
+                                final uri = Uri.parse(fileUrl);
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                } else {
+                                  throw 'Could not launch $fileUrl';
+                                }
+                                break;
+                              case ContextMenuItems.copy:
+                                await RichClipboard.setData(RichClipboardData(
+                                  text: fileUrl,
+                                  //html: '{"action": "copy", "files": [$fileUrl]}', //TODO: Meant for copying files
+                                ));
+                                break;
+                              default:
+                            }
+                          },
+                          splashRadius: 24,
+                          itemBuilder: (BuildContext context) => [
+                            const PopupMenuItem(
+                              value: ContextMenuItems.openinbrowser,
+                              child: Text("Open in browser"),
+                            ),
+                            const PopupMenuItem(
+                              value: ContextMenuItems.copy,
+                              child: Text("Copy"),
+                            ),
+                            const PopupMenuDivider(),
+                            const PopupMenuItem(
+                              value: ContextMenuItems.delete,
+                              child: Text("Delete"),
+                            ),
+                          ],
+                        ),
+                      ),
                 title: Text(_data!.files[index].name),
                 onTap: () async {
                   if (selectMode) {

@@ -43,6 +43,8 @@ dependencies:
   path_provider: ^2.0.14
   permission_handler: ^10.2.0
   back_button_interceptor: ^6.0.2
+  rich_clipboard: ^1.0.1
+  url_launcher: ^6.1.10
 
 dev_dependencies:
   flutter_launcher_icons: "^0.13.0"
