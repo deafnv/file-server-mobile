@@ -47,7 +47,7 @@
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="https" android:host="yourdomain.com" android:pathPrefix="/deep-link" />
+            <data android:scheme="https" android:host="yourdomain.com" android:pathPrefix="/retrieve" />
         </intent>
     </queries>
 </manifest>
