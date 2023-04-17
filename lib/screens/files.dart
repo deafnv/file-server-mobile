@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../types.dart';
 import './image_viewer.dart';
+import './video_player.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key, this.currentDir});
@@ -56,6 +57,14 @@ class _MainPageState extends State<MainPage> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => ViewImage(url: '$apiUrl/retrieve$imagePath'),
+                      ),
+                    );
+                  } else if (_getIcon(snapshot.data!.files[index]) == Icons.movie) {
+                    final imagePath = snapshot.data!.files[index].path;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => VideoPlayerScreen(url: '$apiUrl/retrieve$imagePath'),
                       ),
                     );
                   }
