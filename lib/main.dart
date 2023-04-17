@@ -25,8 +25,7 @@ class MyApp extends StatelessWidget {
           ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ButtonStyle(
-              backgroundColor: MaterialStateProperty.resolveWith<Color?>(
-                  (Set<MaterialState> states) {
+              backgroundColor: MaterialStateProperty.resolveWith<Color?>((Set<MaterialState> states) {
                 return Theme.of(context).colorScheme.secondary;
               }),
             ),
@@ -38,7 +37,7 @@ class MyApp extends StatelessWidget {
     ), */
           //scaffoldBackgroundColor: Color.fromARGB(235, 255, 255, 255),
           textTheme: Theme.of(context).textTheme.apply(
-                fontFamily: 'Futura',
+                fontFamily: 'Futura', //FIXME: change this
                 bodyColor: Colors.white,
                 displayColor: Colors.white,
               ),

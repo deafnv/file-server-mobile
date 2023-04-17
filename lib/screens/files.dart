@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../types.dart';
+import './image_viewer.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key, this.currentDir});
@@ -15,13 +16,13 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
+  final apiUrl = dotenv.env['API_URL']!;
+
   Future<ApiListResponseList?> _fetchData() async {
-    final apiUrl = dotenv.env['API_URL']!;
     final pathDir = widget.currentDir == null ? '/' : widget.currentDir!.path;
     final response = await http.get(Uri.parse('$apiUrl/list$pathDir'));
     if (response.statusCode == 200) {
-      var parsedResponse =
-          ApiListResponseList.fromJson(jsonDecode(response.body));
+      var parsedResponse = ApiListResponseList.fromJson(jsonDecode(response.body));
       parsedResponse.files.sort((a, b) {
         if (a.isDirectory && b.isDirectory) return a.name.compareTo(b.name);
         if (a.isDirectory && !b.isDirectory) return -1;
@@ -41,14 +42,23 @@ class _MainPageState extends State<MainPage> {
             itemCount: snapshot.data!.files.length,
             itemBuilder: (context, index) {
               return ListTile(
+                leading: Icon(_getIcon(snapshot.data!.files[index])),
                 title: Text(snapshot.data!.files[index].name),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) =>
-                            MainPage(currentDir: snapshot.data!.files[index])),
-                  );
+                  if (snapshot.data!.files[index].isDirectory) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => MainPage(currentDir: snapshot.data!.files[index])),
+                    );
+                  } else if (_getIcon(snapshot.data!.files[index]) == Icons.image) {
+                    final imagePath = snapshot.data!.files[index].path;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ViewImage(url: '$apiUrl/retrieve$imagePath'),
+                      ),
+                    );
+                  }
                 },
               );
             });
@@ -64,12 +74,29 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
+  _getIcon(ApiListResponse file) {
+    if (file.isDirectory) return Icons.folder;
+    final splitName = file.name.split('.');
+    final extension = splitName[splitName.length - 1];
+    if (splitName.length == 1) return null;
+    if (['zip', '7z', 'rar'].contains(extension)) return Icons.folder_zip;
+    if (['doc', 'docx', 'txt', 'pdf'].contains(extension)) return Icons.article;
+    if (['mkv', 'mp4', 'webm', 'ogg'].contains(extension)) return Icons.movie;
+    if (['png', 'jpg', 'jpeg', 'gif'].contains(extension)) return Icons.image;
+    if (['wav', 'mp3', 'aac', 'flac', 'm4a'].contains(extension)) return Icons.audio_file;
+    if (['json', 'jsonl'].contains(extension)) return Icons.data_object;
+    if (['js', 'jsx', 'css', 'ts', 'tsx'].contains(extension)) return Icons.code;
+    if (['xlsx', 'xls', 'csv'].contains(extension)) return Icons.list_alt;
+    if (['ass', 'srt', 'vtt'].contains(extension)) return Icons.closed_caption;
+    if (['exe'].contains(extension)) return Icons.terminal;
+    return Icons.insert_drive_file;
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
         future: _fetchData(),
-        builder: (BuildContext context,
-            AsyncSnapshot<ApiListResponseList?> snapshot) {
+        builder: (BuildContext context, AsyncSnapshot<ApiListResponseList?> snapshot) {
           return Scaffold(
               appBar: AppBar(
                 leading: widget.currentDir == null
