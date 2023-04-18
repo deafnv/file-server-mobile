@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:file_server_mobile/screens/files.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -103,14 +105,16 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   );
 
+                  final username = usernameController.text.trim();
                   final response = await http.post(
                     Uri.parse('$apiUrl/authorize/get'),
-                    body: {"user": usernameController.text.trim()},
-                    headers: {"X-API-Key": passwordController.text.trim()},
+                    body: jsonEncode({"user": username}),
+                    headers: {"X-API-Key": passwordController.text.trim(), "content-type": "application/json"},
                   );
+
+                  //* If response returned with set-cookie header, set cookie
                   String? rawCookie = response.headers['set-cookie'];
                   if (rawCookie != null) {
-                    final username = usernameController.text.trim();
                     final SharedPreferences prefs = await SharedPreferences.getInstance();
                     await prefs.setString('userdata', '{"user": "$username"}');
 
@@ -130,6 +134,7 @@ class _LoginPageState extends State<LoginPage> {
                     navigatorKey.currentState!.pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
                   } else {
                     scaffoldKey.currentState!.showSnackBar(const SnackBar(
+                      backgroundColor: Colors.red,
                       content: Text('Wrong password'),
                     ));
                     navigatorKey.currentState!.pop();

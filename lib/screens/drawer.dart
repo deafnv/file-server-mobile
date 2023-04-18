@@ -8,16 +8,40 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:file_server_mobile/app_data.dart';
 
-class CustomDrawer extends StatelessWidget {
-  const CustomDrawer({super.key});
+class CustomDrawer extends StatefulWidget {
+  const CustomDrawer({super.key, required this.storage, required this.prefs});
+
+  final FlutterSecureStorage storage;
+  final SharedPreferences prefs;
 
   @override
+  State<CustomDrawer> createState() => _CustomDrawerState();
+}
+
+class _CustomDrawerState extends State<CustomDrawer> {
+  @override
   Widget build(BuildContext context) {
+    final navigatorKey = Provider.of<AppData>(context).navigatorKey;
+    final String? userDataString = widget.prefs.getString('userdata');
+
     return SafeArea(
       child: Drawer(
         child: Column(
           children: [
-            const UserDetails(),
+            SizedBox(
+              height: MediaQuery.of(context).size.height / 3.7,
+              width: MediaQuery.of(context).size.width,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColorDark,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: _getUserDrawerDetails(userDataString, navigatorKey),
+                ),
+              ),
+            ),
             Expanded(
               child: ListView.builder(
                 physics: const NeverScrollableScrollPhysics(),
@@ -41,34 +65,8 @@ class CustomDrawer extends StatelessWidget {
       ),
     );
   }
-}
 
-class UserDetails extends StatefulWidget {
-  const UserDetails({super.key});
-
-  @override
-  State<UserDetails> createState() => _UserDetailsState();
-}
-
-class _UserDetailsState extends State<UserDetails> {
-  late SharedPreferences prefs;
-  late FlutterSecureStorage storage;
-
-  @override
-  void initState() {
-    super.initState();
-
-    AndroidOptions getAndroidOptions() => const AndroidOptions(
-          encryptedSharedPreferences: true,
-        );
-    storage = FlutterSecureStorage(aOptions: getAndroidOptions());
-  }
-
-  Future<List<Widget>> _getUserDrawerDetails(GlobalKey<NavigatorState> navigatorKey) async {
-    prefs = await SharedPreferences.getInstance();
-
-    final String? userDataString = prefs.getString('userdata');
-
+  _getUserDrawerDetails(String? userDataString, GlobalKey<NavigatorState> navigatorKey) {
     if (userDataString != null) {
       return [
         const Text(
@@ -82,8 +80,8 @@ class _UserDetailsState extends State<UserDetails> {
         ),
         ElevatedButton(
           onPressed: () async {
-            await prefs.remove('userdata');
-            await storage.delete(key: 'token');
+            await widget.prefs.remove('userdata');
+            await widget.storage.delete(key: 'token');
             navigatorKey.currentState!.pop();
           },
           child: const Text('Logout'),
@@ -118,38 +116,5 @@ class _UserDetailsState extends State<UserDetails> {
         ),
       ];
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final navigatorKey = Provider.of<AppData>(context).navigatorKey;
-
-    return FutureBuilder(
-      future: _getUserDrawerDetails(navigatorKey),
-      builder: (BuildContext context, AsyncSnapshot<List<Widget>> snapshot) {
-        if (snapshot.connectionState == ConnectionState.done && snapshot.data != null) {
-          return SizedBox(
-            height: MediaQuery.of(context).size.height / 3.7,
-            width: MediaQuery.of(context).size.width,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColorDark,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: snapshot.data!,
-              ),
-            ),
-          );
-        } else {
-          return Center(
-            child: CircularProgressIndicator(
-              color: Theme.of(context).colorScheme.secondary,
-            ),
-          );
-        }
-      },
-    );
   }
 }

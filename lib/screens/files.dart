@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -37,7 +38,9 @@ class _MainPageState extends State<MainPage> {
   bool connectionDone = false;
   bool selectMode = false;
   List<ApiListResponse> selectedFiles = [];
+
   late FlutterSecureStorage storage;
+  SharedPreferences? prefs;
 
   final ReceivePort _port = ReceivePort();
 
@@ -59,6 +62,9 @@ class _MainPageState extends State<MainPage> {
           encryptedSharedPreferences: true,
         );
     storage = FlutterSecureStorage(aOptions: getAndroidOptions());
+
+    //FIXME: Fix this. no drawer until prefs is initialized (not null)
+    SharedPreferences.getInstance().then((value) => prefs = value);
 
     //* Get data on init
     _fetchData().then((data) {
@@ -104,13 +110,6 @@ class _MainPageState extends State<MainPage> {
       openFileFromNotification: true,
       saveInPublicStorage: true,
     );
-  }
-
-  _snackBar(String message) {
-    final snackBar = SnackBar(
-      content: Text(message),
-    );
-    return snackBar;
   }
 
   _loadAppBar() {
@@ -268,7 +267,47 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     final scaffoldKey = Provider.of<AppData>(context).scaffoldMessengerKey;
 
-    return Scaffold(appBar: _loadAppBar(), drawer: const CustomDrawer(), body: _loadUI(scaffoldKey));
+    return Scaffold(
+      appBar: _loadAppBar(),
+      drawer: prefs != null ? CustomDrawer(storage: storage, prefs: prefs!) : null,
+      body: _loadUI(scaffoldKey),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          final newFolderNameController = TextEditingController();
+          final addUserBorderStyle = OutlineInputBorder(
+            borderSide: BorderSide(width: 2, color: Theme.of(context).colorScheme.secondary),
+          );
+          showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text('New folder'),
+                content: TextField(
+                  controller: newFolderNameController,
+                  cursorColor: Theme.of(context).colorScheme.secondary,
+                  textInputAction: TextInputAction.done,
+                  decoration: InputDecoration(
+                    labelText: "Folder name",
+                    labelStyle: const TextStyle(color: Colors.grey),
+                    enabledBorder: addUserBorderStyle,
+                    focusedBorder: addUserBorderStyle,
+                    errorBorder: addUserBorderStyle,
+                    focusedErrorBorder: addUserBorderStyle,
+                  ),
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () => _newFolder(context, newFolderNameController, scaffoldKey),
+                    child: const Text('Approve'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
   }
 
   Future<void> _refreshData() async {
@@ -295,6 +334,48 @@ class _MainPageState extends State<MainPage> {
       connectionDone = true;
       return null;
     }
+  }
+
+  //* State changing interactions
+  _newFolder(BuildContext context, TextEditingController newFolderNameController,
+      GlobalKey<ScaffoldMessengerState> scaffoldKey) {
+    final currentPath = widget.currentDir != null ? widget.currentDir!.path : '/';
+    storage.read(key: 'token').then((token) {
+      if (token != null) {
+        http.post(
+          Uri.parse('$apiUrl/makedir'),
+          body: jsonEncode({"newDirName": newFolderNameController.text.trim(), "currentPath": currentPath}),
+          headers: {"cookie": "token=$token;", "content-type": "application/json"},
+        ).then((value) {
+          if (value.statusCode == 201) {
+            scaffoldKey.currentState!.showSnackBar(_snackBar('Created new folder'));
+          } else {
+            scaffoldKey.currentState!.showSnackBar(_snackBar('Something went wrong', SnackbarStatus.warning));
+          }
+        });
+      } else {
+        scaffoldKey.currentState!.showSnackBar(_snackBar('You need to log in for this action', SnackbarStatus.warning));
+      }
+      Navigator.pop(context);
+    });
+  }
+
+  //* Utility functions
+  _snackBar(String message, [SnackbarStatus? status]) {
+    Color snackbarBackground;
+    switch (status) {
+      case SnackbarStatus.warning:
+        snackbarBackground = Colors.red;
+        break;
+      default:
+        snackbarBackground = Colors.white;
+    }
+
+    final snackBar = SnackBar(
+      content: Text(message),
+      backgroundColor: snackbarBackground,
+    );
+    return snackBar;
   }
 
   _getIcon(ApiListResponse file) {

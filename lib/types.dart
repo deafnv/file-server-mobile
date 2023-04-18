@@ -41,3 +41,5 @@ class ApiListResponseList {
     return ApiListResponseList(files: files);
   }
 }
+
+enum SnackbarStatus { warning }
