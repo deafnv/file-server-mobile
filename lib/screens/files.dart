@@ -4,24 +4,27 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:rich_clipboard/rich_clipboard.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../types.dart';
+import 'drawer.dart';
 import './image_viewer.dart';
 import './video_player.dart';
+import 'package:file_server_mobile/app_data.dart';
 
 enum ContextMenuItems { openinbrowser, copy, delete, rename, move }
 
 class MainPage extends StatefulWidget {
-  const MainPage({super.key, required this.scaffoldMessengerKey, this.currentDir});
+  const MainPage({super.key, this.currentDir});
 
-  final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey;
   final ApiListResponse? currentDir;
 
   @override
@@ -34,6 +37,7 @@ class _MainPageState extends State<MainPage> {
   bool connectionDone = false;
   bool selectMode = false;
   List<ApiListResponse> selectedFiles = [];
+  late FlutterSecureStorage storage;
 
   final ReceivePort _port = ReceivePort();
 
@@ -50,6 +54,11 @@ class _MainPageState extends State<MainPage> {
   @override
   void initState() {
     super.initState();
+
+    AndroidOptions getAndroidOptions() => const AndroidOptions(
+          encryptedSharedPreferences: true,
+        );
+    storage = FlutterSecureStorage(aOptions: getAndroidOptions());
 
     //* Get data on init
     _fetchData().then((data) {
@@ -142,7 +151,7 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
-  _loadUI() {
+  _loadUI(GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     if (connectionDone) {
       if (_data != null) {
         return ListView.builder(
@@ -176,8 +185,7 @@ class _MainPageState extends State<MainPage> {
                                   text: Uri.parse(fileUrl).toString(),
                                   //html: '{"action": "copy", "files": [$fileUrl]}', //TODO: Meant for copying files in app, rn copy parsed link
                                 ));
-                                widget.scaffoldMessengerKey.currentState
-                                    ?.showSnackBar(_snackBar('Copied link to clipboard'));
+                                scaffoldKey.currentState?.showSnackBar(_snackBar('Copied link to clipboard'));
                                 break;
                               default:
                             }
@@ -214,9 +222,7 @@ class _MainPageState extends State<MainPage> {
                   if (_data!.files[index].isDirectory) {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (context) => MainPage(
-                              scaffoldMessengerKey: widget.scaffoldMessengerKey, currentDir: _data!.files[index])),
+                      MaterialPageRoute(builder: (context) => MainPage(currentDir: _data!.files[index])),
                     );
                   } /* else if (_getIcon(snapshot.data!.files[index]) == Icons.image) { //TODO: Reenable these after improving them
                     final imagePath = snapshot.data!.files[index].path;
@@ -260,7 +266,9 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(appBar: _loadAppBar(), body: _loadUI());
+    final scaffoldKey = Provider.of<AppData>(context).scaffoldMessengerKey;
+
+    return Scaffold(appBar: _loadAppBar(), drawer: const CustomDrawer(), body: _loadUI(scaffoldKey));
   }
 
   Future<void> _refreshData() async {

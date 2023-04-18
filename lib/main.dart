@@ -4,7 +4,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:provider/provider.dart';
 
+import 'app_data.dart';
 import 'screens/files.dart';
 
 class DownloadClass {
@@ -22,18 +24,25 @@ Future main() async {
   );
   FlutterDownloader.registerCallback(DownloadClass.downloadCallback);
 
-  runApp(MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => AppData(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
-  MyApp({super.key});
-
-  final _scaffoldKey = GlobalKey<ScaffoldMessengerState>();
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final scaffoldKey = Provider.of<AppData>(context).scaffoldMessengerKey;
+    final navigatorKey = Provider.of<AppData>(context).navigatorKey;
+
     return MaterialApp(
-      scaffoldMessengerKey: _scaffoldKey,
+      navigatorKey: navigatorKey,
+      scaffoldMessengerKey: scaffoldKey,
       title: 'File Server',
       theme: ThemeData(
           brightness: Brightness.dark,
@@ -66,9 +75,7 @@ class MyApp extends StatelessWidget {
             selectionColor: Theme.of(context).colorScheme.secondary,
             selectionHandleColor: Theme.of(context).colorScheme.tertiary,
           )),
-      home: MainPage(
-        scaffoldMessengerKey: _scaffoldKey,
-      ),
+      home: const MainPage(),
     );
   }
 }
