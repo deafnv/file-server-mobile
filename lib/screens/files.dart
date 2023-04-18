@@ -273,34 +273,62 @@ class _MainPageState extends State<MainPage> {
       body: _loadUI(scaffoldKey),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          final newFolderNameController = TextEditingController();
-          final addUserBorderStyle = OutlineInputBorder(
-            borderSide: BorderSide(width: 2, color: Theme.of(context).colorScheme.secondary),
-          );
-          showDialog(
+          showModalBottomSheet(
             context: context,
             builder: (context) {
-              return AlertDialog(
-                title: const Text('New folder'),
-                content: TextField(
-                  controller: newFolderNameController,
-                  cursorColor: Theme.of(context).colorScheme.secondary,
-                  textInputAction: TextInputAction.done,
-                  decoration: InputDecoration(
-                    labelText: "Folder name",
-                    labelStyle: const TextStyle(color: Colors.grey),
-                    enabledBorder: addUserBorderStyle,
-                    focusedBorder: addUserBorderStyle,
-                    errorBorder: addUserBorderStyle,
-                    focusedErrorBorder: addUserBorderStyle,
-                  ),
+              return Padding(
+                padding: const EdgeInsets.all(40),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 60.0,
+                          height: 60.0,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.grey,
+                              width: 1.0,
+                            ),
+                          ),
+                          child: IconButton(
+                            splashRadius: 30,
+                            onPressed: () {},
+                            icon: const Icon(Icons.upload),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text('Upload'),
+                      ],
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 60.0,
+                          height: 60.0,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.grey,
+                              width: 1.0,
+                            ),
+                          ),
+                          child: IconButton(
+                            splashRadius: 30,
+                            onPressed: () => _newFolder(context, scaffoldKey),
+                            icon: const Icon(Icons.create_new_folder),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text('New folder'),
+                      ],
+                    ),
+                  ],
                 ),
-                actions: <Widget>[
-                  TextButton(
-                    onPressed: () => _newFolder(context, newFolderNameController, scaffoldKey),
-                    child: const Text('Approve'),
-                  ),
-                ],
               );
             },
           );
@@ -337,27 +365,81 @@ class _MainPageState extends State<MainPage> {
   }
 
   //* State changing interactions
-  _newFolder(BuildContext context, TextEditingController newFolderNameController,
-      GlobalKey<ScaffoldMessengerState> scaffoldKey) {
-    final currentPath = widget.currentDir != null ? widget.currentDir!.path : '/';
-    storage.read(key: 'token').then((token) {
-      if (token != null) {
-        http.post(
-          Uri.parse('$apiUrl/makedir'),
-          body: jsonEncode({"newDirName": newFolderNameController.text.trim(), "currentPath": currentPath}),
-          headers: {"cookie": "token=$token;", "content-type": "application/json"},
-        ).then((value) {
-          if (value.statusCode == 201) {
-            scaffoldKey.currentState!.showSnackBar(_snackBar('Created new folder'));
-          } else {
-            scaffoldKey.currentState!.showSnackBar(_snackBar('Something went wrong', SnackbarStatus.warning));
-          }
-        });
-      } else {
-        scaffoldKey.currentState!.showSnackBar(_snackBar('You need to log in for this action', SnackbarStatus.warning));
-      }
-      Navigator.pop(context);
-    });
+  _newFolder(BuildContext context, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
+    final newFolderNameController = TextEditingController();
+    final addUserBorderStyle = OutlineInputBorder(
+      borderSide: BorderSide(width: 2, color: Theme.of(context).colorScheme.secondary),
+    );
+    Navigator.pop(context);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('New folder'),
+          content: TextField(
+            controller: newFolderNameController,
+            cursorColor: Theme.of(context).colorScheme.secondary,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              labelText: "Folder name",
+              labelStyle: const TextStyle(color: Colors.grey),
+              enabledBorder: addUserBorderStyle,
+              focusedBorder: addUserBorderStyle,
+              errorBorder: addUserBorderStyle,
+              focusedErrorBorder: addUserBorderStyle,
+            ),
+          ),
+          actions: <Widget>[
+            SizedBox(
+              height: 45,
+              width: 70,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 45,
+              width: 70,
+              child: TextButton(
+                onPressed: () {
+                  final currentPath = widget.currentDir != null ? widget.currentDir!.path : '/';
+                  storage.read(key: 'token').then((token) {
+                    if (token != null) {
+                      http.post(
+                        Uri.parse('$apiUrl/makedir'),
+                        body:
+                            jsonEncode({"newDirName": newFolderNameController.text.trim(), "currentPath": currentPath}),
+                        headers: {"cookie": "token=$token;", "content-type": "application/json"},
+                      ).then((value) {
+                        if (value.statusCode == 201) {
+                          scaffoldKey.currentState!.showSnackBar(_snackBar('Created new folder'));
+                        } else {
+                          scaffoldKey.currentState!
+                              .showSnackBar(_snackBar('Something went wrong', SnackbarStatus.warning));
+                        }
+                      });
+                    } else {
+                      scaffoldKey.currentState!
+                          .showSnackBar(_snackBar('You need to log in for this action', SnackbarStatus.warning));
+                    }
+                    Navigator.pop(context);
+                  });
+                },
+                child: const Text(
+                  'Create',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   //* Utility functions
