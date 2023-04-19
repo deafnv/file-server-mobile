@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:rich_clipboard/rich_clipboard.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -34,6 +35,7 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   final apiUrl = dotenv.env['API_URL']!;
+
   ApiListResponseList? _data;
   bool connectionDone = false;
   bool selectMode = false;
@@ -43,6 +45,8 @@ class _MainPageState extends State<MainPage> {
   SharedPreferences? prefs;
 
   final ReceivePort _port = ReceivePort();
+
+  late IO.Socket socket;
 
   _setSelectMode(bool val) {
     if (val) {
@@ -54,9 +58,18 @@ class _MainPageState extends State<MainPage> {
     setState(() {});
   }
 
+  _handleSocketEvent(dynamic data) => _refreshData();
+
   @override
   void initState() {
     super.initState();
+
+    socket = IO.io(apiUrl, <String, dynamic>{
+      'transports': ['websocket'],
+      'autoConnect': false,
+    });
+    socket.connect();
+    socket.on(widget.currentDir != null ? widget.currentDir!.path : '/', _handleSocketEvent);
 
     AndroidOptions getAndroidOptions() => const AndroidOptions(
           encryptedSharedPreferences: true,
@@ -88,6 +101,10 @@ class _MainPageState extends State<MainPage> {
   void dispose() {
     BackButtonInterceptor.remove(exitSelectModeBack);
     IsolateNameServer.removePortNameMapping('downloader_send_port');
+
+    //TODO: Investigate if this is sufficient to prevent unnecessary refreshes, might need RouteObserver
+    socket.off(widget.currentDir != null ? widget.currentDir!.path : '/', _handleSocketEvent);
+    socket.disconnect();
     super.dispose();
   }
 
