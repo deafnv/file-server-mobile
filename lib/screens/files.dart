@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
@@ -12,9 +13,11 @@ import 'package:http/http.dart' as http;
 import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:rich_clipboard/rich_clipboard.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
-import 'package:path_provider/path_provider.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:file_picker/file_picker.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../types.dart';
 import 'drawer.dart';
@@ -46,7 +49,7 @@ class _MainPageState extends State<MainPage> {
 
   final ReceivePort _port = ReceivePort();
 
-  late IO.Socket socket;
+  late io.Socket socket;
 
   _setSelectMode(bool val) {
     if (val) {
@@ -64,7 +67,7 @@ class _MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
 
-    socket = IO.io(apiUrl, <String, dynamic>{
+    socket = io.io(apiUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });
@@ -313,7 +316,7 @@ class _MainPageState extends State<MainPage> {
                           ),
                           child: IconButton(
                             splashRadius: 30,
-                            onPressed: () {},
+                            onPressed: () => _uploadFile(scaffoldKey),
                             icon: const Icon(Icons.upload),
                           ),
                         ),
@@ -382,6 +385,43 @@ class _MainPageState extends State<MainPage> {
   }
 
   //* State changing interactions
+  _uploadFile(GlobalKey<ScaffoldMessengerState> scaffoldKey) async {
+    var permStorage = await Permission.storage.request();
+    if (!permStorage.isGranted) {
+      Fluttertoast.showToast(msg: 'Please allow storage permissions to upload');
+      if (permStorage.isPermanentlyDenied) {
+        await Future.delayed(const Duration(seconds: 1));
+        await openAppSettings();
+      }
+    } else {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(allowMultiple: true);
+      if (result != null) {
+        final token = await storage.read(key: 'token');
+        if (token != null) {
+          List<File> files = result.paths.map((path) => File(path!)).toList();
+          final pathDir = widget.currentDir == null ? '/' : widget.currentDir!.path;
+          final url = Uri.parse('$apiUrl/upload$pathDir');
+          final request = http.MultipartRequest('POST', url);
+          for (int i = 0; i < files.length; i++) {
+            request.files.add(await http.MultipartFile.fromPath('upload-file', files[i].path));
+          }
+          request.headers["cookie"] = "token=$token;";
+          final response = await request.send();
+          if (response.statusCode == 200) {
+            scaffoldKey.currentState!.showSnackBar(_snackBar('File(s) uploaded'));
+          } else {
+            scaffoldKey.currentState!
+                .showSnackBar(_snackBar('Something went wrong, try logging in again', SnackbarStatus.warning));
+          }
+        } else {
+          scaffoldKey.currentState!
+              .showSnackBar(_snackBar('You need to log in for this action', SnackbarStatus.warning));
+        }
+        if (context.mounted) Navigator.pop(context);
+      }
+    }
+  }
+
   _newFolder(BuildContext context, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     final newFolderNameController = TextEditingController();
     final addUserBorderStyle = OutlineInputBorder(
@@ -436,8 +476,8 @@ class _MainPageState extends State<MainPage> {
                         if (value.statusCode == 201) {
                           scaffoldKey.currentState!.showSnackBar(_snackBar('Created new folder'));
                         } else {
-                          scaffoldKey.currentState!
-                              .showSnackBar(_snackBar('Something went wrong', SnackbarStatus.warning));
+                          scaffoldKey.currentState!.showSnackBar(
+                              _snackBar('Something went wrong, try logging in again', SnackbarStatus.warning));
                         }
                       });
                     } else {
