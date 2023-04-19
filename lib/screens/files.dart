@@ -186,29 +186,7 @@ class _MainPageState extends State<MainPage> {
                     : Theme(
                         data: Theme.of(context).copyWith(dividerColor: Colors.white),
                         child: PopupMenuButton<ContextMenuItems>(
-                          onSelected: (value) async {
-                            final filePath = _data!.files[index].path;
-                            final fileUrl =
-                                _data!.files[index].isDirectory ? '$apiUrl/list$filePath' : '$apiUrl/retrieve$filePath';
-                            switch (value) {
-                              case ContextMenuItems.openinbrowser:
-                                final uri = Uri.parse(fileUrl);
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                } else {
-                                  throw 'Could not launch $fileUrl';
-                                }
-                                break;
-                              case ContextMenuItems.copy:
-                                await RichClipboard.setData(RichClipboardData(
-                                  text: Uri.parse(fileUrl).toString(),
-                                  //html: '{"action": "copy", "files": [$fileUrl]}', //TODO: Meant for copying files in app, rn copy parsed link
-                                ));
-                                scaffoldKey.currentState?.showSnackBar(_snackBar('Copied link to clipboard'));
-                                break;
-                              default:
-                            }
-                          },
+                          onSelected: (value) => _contextMenuSelect(value, index, scaffoldKey),
                           splashRadius: 24,
                           itemBuilder: (BuildContext context) => [
                             const PopupMenuItem(
@@ -293,65 +271,70 @@ class _MainPageState extends State<MainPage> {
       body: _loadUI(scaffoldKey),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            builder: (context) {
-              return Padding(
-                padding: const EdgeInsets.all(40),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 60.0,
-                          height: 60.0,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.grey,
-                              width: 1.0,
+          if (prefs!.getString('userdata') != null) {
+            showModalBottomSheet(
+              context: context,
+              builder: (context) {
+                return Padding(
+                  padding: const EdgeInsets.all(40),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 60.0,
+                            height: 60.0,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.grey,
+                                width: 1.0,
+                              ),
+                            ),
+                            child: IconButton(
+                              splashRadius: 30,
+                              onPressed: () => _uploadFile(scaffoldKey),
+                              icon: const Icon(Icons.upload),
                             ),
                           ),
-                          child: IconButton(
-                            splashRadius: 30,
-                            onPressed: () => _uploadFile(scaffoldKey),
-                            icon: const Icon(Icons.upload),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text('Upload'),
-                      ],
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 60.0,
-                          height: 60.0,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.grey,
-                              width: 1.0,
+                          const SizedBox(height: 10),
+                          const Text('Upload'),
+                        ],
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 60.0,
+                            height: 60.0,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.grey,
+                                width: 1.0,
+                              ),
+                            ),
+                            child: IconButton(
+                              splashRadius: 30,
+                              onPressed: () => _newFolder(context, scaffoldKey),
+                              icon: const Icon(Icons.create_new_folder),
                             ),
                           ),
-                          child: IconButton(
-                            splashRadius: 30,
-                            onPressed: () => _newFolder(context, scaffoldKey),
-                            icon: const Icon(Icons.create_new_folder),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text('New folder'),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
+                          const SizedBox(height: 10),
+                          const Text('New folder'),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          } else {
+            scaffoldKey.currentState!
+                .showSnackBar(_snackBar('You need to log in for this action', SnackbarStatus.warning));
+          }
         },
         child: const Icon(Icons.add),
       ),
@@ -384,7 +367,85 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
+  //* onSelect function for file context menu
+  _contextMenuSelect(ContextMenuItems value, int index, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
+    final filePath = _data!.files[index].path;
+    final fileUrl = _data!.files[index].isDirectory ? '$apiUrl/list$filePath' : '$apiUrl/retrieve$filePath';
+    switch (value) {
+      case ContextMenuItems.openinbrowser:
+        final uri = Uri.parse(fileUrl);
+        canLaunchUrl(uri)
+            .then((_) => launchUrl(uri, mode: LaunchMode.externalApplication))
+            .catchError((_) => throw 'Could not launch $fileUrl');
+        break;
+      case ContextMenuItems.copy:
+        RichClipboard.setData(RichClipboardData(
+          text: Uri.parse(fileUrl).toString(),
+          //html: '{"action": "copy", "files": [$fileUrl]}', //TODO: Meant for copying files in app, rn copy parsed link
+        )).then((_) => scaffoldKey.currentState?.showSnackBar(_snackBar('Copied link to clipboard')));
+        break;
+      case ContextMenuItems.delete:
+        showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text('Confirm delete?'),
+                actions: <Widget>[
+                  SizedBox(
+                    height: 45,
+                    width: 70,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 45,
+                    width: 70,
+                    child: TextButton(
+                      onPressed: () {
+                        _deleteFiles([filePath], scaffoldKey);
+                        Navigator.pop(context);
+                      },
+                      child: const Text(
+                        'Yes',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            });
+        break;
+      default:
+    }
+  }
+
   //* State changing interactions
+  _deleteFiles(List<String> filePaths, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
+    storage.read(key: 'token').then((token) {
+      if (token != null) {
+        http.delete(
+          Uri.parse('$apiUrl/delete'),
+          body: jsonEncode({"pathToFiles": filePaths}),
+          headers: {"cookie": "token=$token;", "content-type": "application/json"},
+        ).then((response) {
+          if (response.statusCode == 200) {
+            scaffoldKey.currentState!.showSnackBar(_snackBar('File(s) deleted'));
+          } else {
+            scaffoldKey.currentState!
+                .showSnackBar(_snackBar('Something went wrong, try logging in again', SnackbarStatus.warning));
+          }
+        });
+      } else {
+        scaffoldKey.currentState!.showSnackBar(_snackBar('You need to log in for this action', SnackbarStatus.warning));
+      }
+    });
+  }
+
   _uploadFile(GlobalKey<ScaffoldMessengerState> scaffoldKey) async {
     var permStorage = await Permission.storage.request();
     if (!permStorage.isGranted) {
