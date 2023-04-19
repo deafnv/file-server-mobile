@@ -202,6 +202,10 @@ class _MainPageState extends State<MainPage> {
                               value: ContextMenuItems.delete,
                               child: Text("Delete"),
                             ),
+                            const PopupMenuItem(
+                              value: ContextMenuItems.rename,
+                              child: Text("Rename"),
+                            ),
                           ],
                         ),
                       ),
@@ -384,64 +388,142 @@ class _MainPageState extends State<MainPage> {
         )).then((_) => _showSnackbar(scaffoldKey, 'Copied link to clipboard'));
         break;
       case ContextMenuItems.delete:
-        showDialog(
-            context: context,
-            builder: (context) {
-              return AlertDialog(
-                title: const Text('Confirm delete?'),
-                actions: <Widget>[
-                  SizedBox(
-                    height: 45,
-                    width: 70,
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: 45,
-                    width: 70,
-                    child: TextButton(
-                      onPressed: () {
-                        _deleteFiles([filePath], scaffoldKey);
-                        Navigator.pop(context);
-                      },
-                      child: const Text(
-                        'Yes',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            });
+        _deleteFiles([filePath], scaffoldKey);
+        break;
+      case ContextMenuItems.rename:
+        _renameFile(filePath, scaffoldKey);
         break;
       default:
     }
   }
 
   //* State changing interactions
+  _renameFile(String filePath, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
+    final newFileNameController = TextEditingController();
+    final textFieldBorderStyle = OutlineInputBorder(
+      borderSide: BorderSide(width: 2, color: Theme.of(context).colorScheme.secondary),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Rename file'),
+          content: TextField(
+            controller: newFileNameController,
+            cursorColor: Theme.of(context).colorScheme.secondary,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              labelText: "New file name",
+              labelStyle: const TextStyle(color: Colors.grey),
+              enabledBorder: textFieldBorderStyle,
+              focusedBorder: textFieldBorderStyle,
+              errorBorder: textFieldBorderStyle,
+              focusedErrorBorder: textFieldBorderStyle,
+            ),
+          ),
+          actions: <Widget>[
+            SizedBox(
+              height: 45,
+              width: 70,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 45,
+              width: 70,
+              child: TextButton(
+                onPressed: () {
+                  storage.read(key: 'token').then((token) {
+                    if (token != null) {
+                      http.patch(
+                        Uri.parse('$apiUrl/rename'),
+                        body: jsonEncode({"newName": newFileNameController.text.trim(), "pathToFile": filePath}),
+                        headers: {"cookie": "token=$token;", "content-type": "application/json"},
+                      ).then((value) {
+                        if (value.statusCode == 200) {
+                          _showSnackbar(scaffoldKey, 'Renamed file');
+                        } else {
+                          _showSnackbar(
+                              scaffoldKey, 'Something went wrong, try logging in again', SnackbarStatus.warning);
+                        }
+                      });
+                    } else {
+                      _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
+                    }
+                    Navigator.pop(context);
+                  });
+                },
+                child: const Text(
+                  'Rename',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   _deleteFiles(List<String> filePaths, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
-    storage.read(key: 'token').then((token) {
-      if (token != null) {
-        http.delete(
-          Uri.parse('$apiUrl/delete'),
-          body: jsonEncode({"pathToFiles": filePaths}),
-          headers: {"cookie": "token=$token;", "content-type": "application/json"},
-        ).then((response) {
-          if (response.statusCode == 200) {
-            _showSnackbar(scaffoldKey, 'File(s) deleted');
-          } else {
-            _showSnackbar(scaffoldKey, 'Something went wrong, try logging in again', SnackbarStatus.warning);
-          }
-        });
-      } else {
-        _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
-      }
-    });
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Confirm delete?'),
+          actions: <Widget>[
+            SizedBox(
+              height: 45,
+              width: 70,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 45,
+              width: 70,
+              child: TextButton(
+                onPressed: () {
+                  storage.read(key: 'token').then((token) {
+                    if (token != null) {
+                      http.delete(
+                        Uri.parse('$apiUrl/delete'),
+                        body: jsonEncode({"pathToFiles": filePaths}),
+                        headers: {"cookie": "token=$token;", "content-type": "application/json"},
+                      ).then((response) {
+                        if (response.statusCode == 200) {
+                          _showSnackbar(scaffoldKey, 'File(s) deleted');
+                        } else {
+                          _showSnackbar(
+                              scaffoldKey, 'Something went wrong, try logging in again', SnackbarStatus.warning);
+                        }
+                      });
+                    } else {
+                      _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
+                    }
+                  });
+                  Navigator.pop(context);
+                },
+                child: const Text(
+                  'Yes',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   _uploadFile(GlobalKey<ScaffoldMessengerState> scaffoldKey) async {
@@ -481,7 +563,7 @@ class _MainPageState extends State<MainPage> {
 
   _newFolder(BuildContext context, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     final newFolderNameController = TextEditingController();
-    final addUserBorderStyle = OutlineInputBorder(
+    final textFieldBorderStyle = OutlineInputBorder(
       borderSide: BorderSide(width: 2, color: Theme.of(context).colorScheme.secondary),
     );
     Navigator.pop(context);
@@ -498,10 +580,10 @@ class _MainPageState extends State<MainPage> {
             decoration: InputDecoration(
               labelText: "Folder name",
               labelStyle: const TextStyle(color: Colors.grey),
-              enabledBorder: addUserBorderStyle,
-              focusedBorder: addUserBorderStyle,
-              errorBorder: addUserBorderStyle,
-              focusedErrorBorder: addUserBorderStyle,
+              enabledBorder: textFieldBorderStyle,
+              focusedBorder: textFieldBorderStyle,
+              errorBorder: textFieldBorderStyle,
+              focusedErrorBorder: textFieldBorderStyle,
             ),
           ),
           actions: <Widget>[
