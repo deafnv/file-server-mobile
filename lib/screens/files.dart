@@ -132,7 +132,7 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  _loadAppBar() {
+  _loadAppBar(GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     if (selectMode) {
       final selectedFilesCount = selectedFiles.length;
       return AppBar(
@@ -150,7 +150,7 @@ class _MainPageState extends State<MainPage> {
             onPressed: () {
               selectedFiles = [..._data!.files];
               setState(() {});
-              ScaffoldMessenger.of(context).showSnackBar(_snackBar('All items selected'));
+              _showSnackbar(scaffoldKey, 'All items selected');
             },
             icon: const Icon(Icons.select_all),
           ),
@@ -266,7 +266,7 @@ class _MainPageState extends State<MainPage> {
     final scaffoldKey = Provider.of<AppData>(context).scaffoldMessengerKey;
 
     return Scaffold(
-      appBar: _loadAppBar(),
+      appBar: _loadAppBar(scaffoldKey),
       drawer: prefs != null ? CustomDrawer(storage: storage, prefs: prefs!) : null,
       body: _loadUI(scaffoldKey),
       floatingActionButton: FloatingActionButton(
@@ -332,8 +332,7 @@ class _MainPageState extends State<MainPage> {
               },
             );
           } else {
-            scaffoldKey.currentState!
-                .showSnackBar(_snackBar('You need to log in for this action', SnackbarStatus.warning));
+            _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
           }
         },
         child: const Icon(Icons.add),
@@ -382,7 +381,7 @@ class _MainPageState extends State<MainPage> {
         RichClipboard.setData(RichClipboardData(
           text: Uri.parse(fileUrl).toString(),
           //html: '{"action": "copy", "files": [$fileUrl]}', //TODO: Meant for copying files in app, rn copy parsed link
-        )).then((_) => scaffoldKey.currentState?.showSnackBar(_snackBar('Copied link to clipboard')));
+        )).then((_) => _showSnackbar(scaffoldKey, 'Copied link to clipboard'));
         break;
       case ContextMenuItems.delete:
         showDialog(
@@ -434,14 +433,13 @@ class _MainPageState extends State<MainPage> {
           headers: {"cookie": "token=$token;", "content-type": "application/json"},
         ).then((response) {
           if (response.statusCode == 200) {
-            scaffoldKey.currentState!.showSnackBar(_snackBar('File(s) deleted'));
+            _showSnackbar(scaffoldKey, 'File(s) deleted');
           } else {
-            scaffoldKey.currentState!
-                .showSnackBar(_snackBar('Something went wrong, try logging in again', SnackbarStatus.warning));
+            _showSnackbar(scaffoldKey, 'Something went wrong, try logging in again', SnackbarStatus.warning);
           }
         });
       } else {
-        scaffoldKey.currentState!.showSnackBar(_snackBar('You need to log in for this action', SnackbarStatus.warning));
+        _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
       }
     });
   }
@@ -469,14 +467,12 @@ class _MainPageState extends State<MainPage> {
           request.headers["cookie"] = "token=$token;";
           final response = await request.send();
           if (response.statusCode == 200) {
-            scaffoldKey.currentState!.showSnackBar(_snackBar('File(s) uploaded'));
+            _showSnackbar(scaffoldKey, 'File(s) uploaded');
           } else {
-            scaffoldKey.currentState!
-                .showSnackBar(_snackBar('Something went wrong, try logging in again', SnackbarStatus.warning));
+            _showSnackbar(scaffoldKey, 'Something went wrong, try logging in again', SnackbarStatus.warning);
           }
         } else {
-          scaffoldKey.currentState!
-              .showSnackBar(_snackBar('You need to log in for this action', SnackbarStatus.warning));
+          _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
         }
         if (context.mounted) Navigator.pop(context);
       }
@@ -535,15 +531,14 @@ class _MainPageState extends State<MainPage> {
                         headers: {"cookie": "token=$token;", "content-type": "application/json"},
                       ).then((value) {
                         if (value.statusCode == 201) {
-                          scaffoldKey.currentState!.showSnackBar(_snackBar('Created new folder'));
+                          _showSnackbar(scaffoldKey, 'Created new folder');
                         } else {
-                          scaffoldKey.currentState!.showSnackBar(
-                              _snackBar('Something went wrong, try logging in again', SnackbarStatus.warning));
+                          _showSnackbar(
+                              scaffoldKey, 'Something went wrong, try logging in again', SnackbarStatus.warning);
                         }
                       });
                     } else {
-                      scaffoldKey.currentState!
-                          .showSnackBar(_snackBar('You need to log in for this action', SnackbarStatus.warning));
+                      _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
                     }
                     Navigator.pop(context);
                   });
@@ -561,7 +556,7 @@ class _MainPageState extends State<MainPage> {
   }
 
   //* Utility functions
-  _snackBar(String message, [SnackbarStatus? status]) {
+  void _showSnackbar(GlobalKey<ScaffoldMessengerState> scaffoldKey, String message, [SnackbarStatus? status]) {
     Color snackbarBackground;
     switch (status) {
       case SnackbarStatus.warning:
@@ -575,10 +570,12 @@ class _MainPageState extends State<MainPage> {
       content: Text(message),
       backgroundColor: snackbarBackground,
     );
-    return snackBar;
+
+    scaffoldKey.currentState!.clearSnackBars();
+    scaffoldKey.currentState!.showSnackBar(snackBar);
   }
 
-  _getIcon(ApiListResponse file) {
+  IconData? _getIcon(ApiListResponse file) {
     if (file.isDirectory) return Icons.folder;
     final splitName = file.name.split('.');
     final extension = splitName[splitName.length - 1];
