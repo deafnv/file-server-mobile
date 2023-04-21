@@ -26,7 +26,7 @@ import './image_viewer.dart';
 import './video_player.dart';
 import 'package:file_server_mobile/app_data.dart';
 
-enum ContextMenuItems { openinbrowser, copy, delete, rename, move, download }
+enum ContextMenuItems { openinbrowser, copy, rename, move, download }
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key, this.currentDir});
@@ -155,7 +155,7 @@ class _MainPageState extends State<MainPage> {
           IconButton(
             tooltip: 'Delete',
             splashRadius: 24,
-            onPressed: () {}, //=> _deleteFiles(selectedFiles.map((e) => e.path).toList(), scaffoldKey),
+            onPressed: () => _deleteFiles(selectedFiles.map((e) => e.path).toList(), scaffoldKey),
             icon: const Icon(Icons.delete_outline),
           ),
           IconButton(
@@ -196,8 +196,9 @@ class _MainPageState extends State<MainPage> {
       if (_data != null) {
         if (_data!.files.isNotEmpty) {
           return ListView.builder(
-              itemCount: _data!.files.length,
-              itemBuilder: (context, index) {
+            itemCount: _data!.files.length + 1,
+            itemBuilder: (context, index) {
+              if (index != _data!.files.length) {
                 return ListTile(
                   tileColor: selectedFiles.contains(_data!.files[index]) ? Colors.grey : Colors.transparent,
                   leading: selectMode && selectedFiles.contains(_data!.files[index])
@@ -220,10 +221,6 @@ class _MainPageState extends State<MainPage> {
                                 child: Text("Copy"),
                               ),
                               const PopupMenuDivider(),
-                              const PopupMenuItem(
-                                value: ContextMenuItems.delete,
-                                child: Text("Delete"),
-                              ),
                               const PopupMenuItem(
                                 value: ContextMenuItems.rename,
                                 child: Text("Rename"),
@@ -285,7 +282,11 @@ class _MainPageState extends State<MainPage> {
                     }
                   },
                 );
-              });
+              } else {
+                return const SizedBox(height: 80);
+              }
+            },
+          );
         } else {
           return const Center(
             child: Text(
@@ -471,9 +472,6 @@ class _MainPageState extends State<MainPage> {
           //html: '{"action": "copy", "files": [$fileUrl]}', //TODO: Meant for copying files in app, rn copy parsed link
         )).then((_) => _showSnackbar(scaffoldKey, 'Copied link to clipboard'));
         break;
-      case ContextMenuItems.delete:
-        _deleteFiles([filePath], scaffoldKey);
-        break;
       case ContextMenuItems.rename:
         _renameFile(filePath, scaffoldKey);
         break;
@@ -601,6 +599,10 @@ class _MainPageState extends State<MainPage> {
                     } else {
                       _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
                     }
+                  });
+                  setState(() {
+                    selectMode = false;
+                    selectedFiles = [];
                   });
                   Navigator.pop(context);
                 },
