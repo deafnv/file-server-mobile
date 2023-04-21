@@ -10,7 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:rich_clipboard/rich_clipboard.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
@@ -102,8 +101,6 @@ class _MainPageState extends State<MainPage> {
       });
     });
 
-    BackButtonInterceptor.add(handleBack);
-
     IsolateNameServer.registerPortWithName(_port.sendPort, 'downloader_send_port');
     /* _port.listen((dynamic data) {
       String id = data[0];
@@ -115,7 +112,6 @@ class _MainPageState extends State<MainPage> {
 
   @override
   void dispose() {
-    BackButtonInterceptor.remove(handleBack);
     IsolateNameServer.removePortNameMapping('downloader_send_port');
 
     //TODO: Investigate if this is sufficient to prevent unnecessary refreshes, might need RouteObserver
@@ -125,26 +121,7 @@ class _MainPageState extends State<MainPage> {
     super.dispose();
   }
 
-  bool handleBack(bool stopDefaultButtonEvent, RouteInfo info) {
-    //* Exiting out of select mode
-    if (selectMode) {
-      _setSelectMode(false);
-      return true;
-    } else if (widget.currentDir != null) {
-      final prevRoute = widget.currentDir!.split('/')..removeLast();
-      Navigator.pushReplacement(
-        context,
-        PageTransition(
-          type: PageTransitionType.leftToRight,
-          child: prevRoute.join('/') == '' ? const MainPage() : MainPage(currentDir: prevRoute.join('/')),
-        ),
-      );
-      return true;
-    } else {
-      return false;
-    }
-  }
-
+  //! Remove later
   void _download(String url) async {
     /* final externalDir = await getExternalStorageDirectory(); */
 
@@ -298,8 +275,14 @@ class _MainPageState extends State<MainPage> {
                   }
                 },
                 onLongPress: () {
-                  selectedFiles.add(_data!.files[index]);
-                  _setSelectMode(true);
+                  selectedFiles.contains(_data!.files[index])
+                      ? selectedFiles.remove(_data!.files[index])
+                      : selectedFiles.add(_data!.files[index]);
+                  if (selectedFiles.isEmpty) {
+                    _setSelectMode(false);
+                  } else {
+                    _setSelectMode(true);
+                  }
                 },
               );
             });
@@ -319,80 +302,101 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     final scaffoldKey = Provider.of<AppData>(context).scaffoldMessengerKey;
 
-    return Scaffold(
-      appBar: _loadAppBar(scaffoldKey),
-      drawer: prefs != null ? CustomDrawer(storage: storage, prefs: prefs!, fileTreeData: _fileTreeData) : null,
-      body: _loadUI(scaffoldKey),
-      floatingActionButton: selectMode
-          ? null
-          : FloatingActionButton(
-              onPressed: () {
-                if (prefs!.getString('userdata') != null) {
-                  showModalBottomSheet(
-                    context: context,
-                    builder: (context) {
-                      return Padding(
-                        padding: const EdgeInsets.all(40),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 60.0,
-                                  height: 60.0,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.grey,
-                                      width: 1.0,
-                                    ),
-                                  ),
-                                  child: IconButton(
-                                    splashRadius: 30,
-                                    onPressed: () => _uploadFile(scaffoldKey),
-                                    icon: const Icon(Icons.upload),
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                const Text('Upload'),
-                              ],
-                            ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 60.0,
-                                  height: 60.0,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.grey,
-                                      width: 1.0,
-                                    ),
-                                  ),
-                                  child: IconButton(
-                                    splashRadius: 30,
-                                    onPressed: () => _newFolder(context, scaffoldKey),
-                                    icon: const Icon(Icons.create_new_folder),
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                const Text('New folder'),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                } else {
-                  _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
-                }
-              },
-              child: const Icon(Icons.add),
+    return WillPopScope(
+      onWillPop: () async {
+        //* Exiting out of select mode
+        if (selectMode) {
+          _setSelectMode(false);
+          return false;
+        } else if (widget.currentDir != null) {
+          final prevRoute = widget.currentDir!.split('/')..removeLast();
+          Navigator.pushReplacement(
+            context,
+            PageTransition(
+              type: PageTransitionType.leftToRight,
+              child: prevRoute.join('/') == '' ? const MainPage() : MainPage(currentDir: prevRoute.join('/')),
             ),
+          );
+          return false;
+        } else {
+          return true;
+        }
+      },
+      child: Scaffold(
+        appBar: _loadAppBar(scaffoldKey),
+        drawer: prefs != null ? CustomDrawer(storage: storage, prefs: prefs!, fileTreeData: _fileTreeData) : null,
+        body: _loadUI(scaffoldKey),
+        floatingActionButton: selectMode
+            ? null
+            : FloatingActionButton(
+                onPressed: () {
+                  if (prefs!.getString('userdata') != null) {
+                    showModalBottomSheet(
+                      context: context,
+                      builder: (context) {
+                        return Padding(
+                          padding: const EdgeInsets.all(40),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 60.0,
+                                    height: 60.0,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.grey,
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    child: IconButton(
+                                      splashRadius: 30,
+                                      onPressed: () => _uploadFile(scaffoldKey),
+                                      icon: const Icon(Icons.upload),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  const Text('Upload'),
+                                ],
+                              ),
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 60.0,
+                                    height: 60.0,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.grey,
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    child: IconButton(
+                                      splashRadius: 30,
+                                      onPressed: () => _newFolder(context, scaffoldKey),
+                                      icon: const Icon(Icons.create_new_folder),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  const Text('New folder'),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  } else {
+                    _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
+                  }
+                },
+                child: const Icon(Icons.add),
+              ),
+      ),
     );
   }
 
