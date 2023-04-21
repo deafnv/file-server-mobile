@@ -117,7 +117,6 @@ class _MainPageState extends State<MainPage> {
     //TODO: Investigate if this is sufficient to prevent unnecessary refreshes, might need RouteObserver
     socket.off(widget.currentDir != null ? widget.currentDir! : '/', _handleSocketEvent);
     socket.off('filetree', _handleFileTreeEvent);
-    socket.disconnect();
     super.dispose();
   }
 
