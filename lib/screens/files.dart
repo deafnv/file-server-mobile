@@ -27,7 +27,7 @@ import './image_viewer.dart';
 import './video_player.dart';
 import 'package:file_server_mobile/app_data.dart';
 
-enum ContextMenuItems { openinbrowser, copy, delete, rename, move }
+enum ContextMenuItems { openinbrowser, copy, delete, rename, move, download }
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key, this.currentDir});
@@ -171,6 +171,19 @@ class _MainPageState extends State<MainPage> {
         title: Text('$selectedFilesCount File(s) selected'),
         actions: [
           IconButton(
+            tooltip: 'Move',
+            splashRadius: 24,
+            onPressed: () {},
+            icon: const Icon(Icons.drive_file_move_outlined),
+          ),
+          IconButton(
+            tooltip: 'Delete',
+            splashRadius: 24,
+            onPressed: () {}, //=> _deleteFiles(selectedFiles.map((e) => e.path).toList(), scaffoldKey),
+            icon: const Icon(Icons.delete_outline),
+          ),
+          IconButton(
+            tooltip: 'Select All',
             splashRadius: 24,
             onPressed: () {
               selectedFiles = [..._data!.files];
@@ -238,6 +251,11 @@ class _MainPageState extends State<MainPage> {
                               value: ContextMenuItems.rename,
                               child: Text("Rename"),
                             ),
+                            const PopupMenuDivider(),
+                            const PopupMenuItem(
+                              value: ContextMenuItems.download,
+                              child: Text("Download"),
+                            )
                           ],
                         ),
                       ),
@@ -260,26 +278,23 @@ class _MainPageState extends State<MainPage> {
                         child: MainPage(currentDir: _data!.files[index].path),
                       ),
                     );
-                  } /* else if (_getIcon(snapshot.data!.files[index]) == Icons.image) { //TODO: Reenable these after improving them
-                    final imagePath = snapshot.data!.files[index].path;
+                  } else if (_getIcon(_data!.files[index]) == Icons.image) {
+                    //TODO: Improve these
+                    final imagePath = _data!.files[index].path;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => ViewImage(url: '$apiUrl/retrieve$imagePath'),
                       ),
                     );
-                  } else if (_getIcon(snapshot.data!.files[index]) == Icons.movie) {
-                    final imagePath = snapshot.data!.files[index].path;
+                  } else if (_getIcon(_data!.files[index]) == Icons.movie) {
+                    final imagePath = _data!.files[index].path;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => VideoPlayerScreen(url: '$apiUrl/retrieve$imagePath'),
                       ),
                     );
-                  } */
-                  else {
-                    final filePath = _data!.files[index].path;
-                    _download('$apiUrl/retrieve$filePath');
                   }
                 },
                 onLongPress: () {
@@ -308,74 +323,76 @@ class _MainPageState extends State<MainPage> {
       appBar: _loadAppBar(scaffoldKey),
       drawer: prefs != null ? CustomDrawer(storage: storage, prefs: prefs!, fileTreeData: _fileTreeData) : null,
       body: _loadUI(scaffoldKey),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          if (prefs!.getString('userdata') != null) {
-            showModalBottomSheet(
-              context: context,
-              builder: (context) {
-                return Padding(
-                  padding: const EdgeInsets.all(40),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 60.0,
-                            height: 60.0,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.grey,
-                                width: 1.0,
-                              ),
+      floatingActionButton: selectMode
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                if (prefs!.getString('userdata') != null) {
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (context) {
+                      return Padding(
+                        padding: const EdgeInsets.all(40),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 60.0,
+                                  height: 60.0,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.grey,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  child: IconButton(
+                                    splashRadius: 30,
+                                    onPressed: () => _uploadFile(scaffoldKey),
+                                    icon: const Icon(Icons.upload),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                const Text('Upload'),
+                              ],
                             ),
-                            child: IconButton(
-                              splashRadius: 30,
-                              onPressed: () => _uploadFile(scaffoldKey),
-                              icon: const Icon(Icons.upload),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 60.0,
+                                  height: 60.0,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.grey,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  child: IconButton(
+                                    splashRadius: 30,
+                                    onPressed: () => _newFolder(context, scaffoldKey),
+                                    icon: const Icon(Icons.create_new_folder),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                const Text('New folder'),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text('Upload'),
-                        ],
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 60.0,
-                            height: 60.0,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.grey,
-                                width: 1.0,
-                              ),
-                            ),
-                            child: IconButton(
-                              splashRadius: 30,
-                              onPressed: () => _newFolder(context, scaffoldKey),
-                              icon: const Icon(Icons.create_new_folder),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text('New folder'),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                } else {
+                  _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
+                }
               },
-            );
-          } else {
-            _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
-          }
-        },
-        child: const Icon(Icons.add),
-      ),
+              child: const Icon(Icons.add),
+            ),
     );
   }
 
@@ -447,6 +464,12 @@ class _MainPageState extends State<MainPage> {
         break;
       case ContextMenuItems.rename:
         _renameFile(filePath, scaffoldKey);
+        break;
+      case ContextMenuItems.download:
+        final uri = Uri.parse('$fileUrl?download=true');
+        canLaunchUrl(uri)
+            .then((_) => launchUrl(uri, mode: LaunchMode.externalApplication))
+            .catchError((_) => throw 'Could not launch $fileUrl');
         break;
       default:
     }
