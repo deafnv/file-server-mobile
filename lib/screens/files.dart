@@ -41,6 +41,7 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   final apiUrl = dotenv.env['API_URL']!;
 
+  String? currentDir;
   ApiListResponseList? _data;
   Map<String, dynamic>? _fileTreeData;
   bool connectionDone = false;
@@ -73,12 +74,14 @@ class _MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
 
+    if (widget.currentDir != null) currentDir = widget.currentDir;
+
     socket = io.io(apiUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });
     socket.connect();
-    socket.on(widget.currentDir != null ? widget.currentDir! : '/', _handleSocketEvent);
+    socket.on(currentDir != null ? currentDir! : '/', _handleSocketEvent);
     socket.on('filetree', _handleFileTreeEvent);
 
     AndroidOptions getAndroidOptions() => const AndroidOptions(
@@ -116,7 +119,7 @@ class _MainPageState extends State<MainPage> {
     IsolateNameServer.removePortNameMapping('downloader_send_port');
 
     //TODO: Investigate if this is sufficient to prevent unnecessary refreshes, might need RouteObserver
-    socket.off(widget.currentDir != null ? widget.currentDir! : '/', _handleSocketEvent);
+    socket.off(currentDir != null ? currentDir! : '/', _handleSocketEvent);
     socket.off('filetree', _handleFileTreeEvent);
     super.dispose();
   }
@@ -154,7 +157,11 @@ class _MainPageState extends State<MainPage> {
               context,
               PageTransition(
                 type: PageTransitionType.leftToRight,
-                child: MoveSelect(storage: storage, filesToMove: selectedFiles.map((e) => e.path).toList()),
+                child: MoveSelect(
+                  currentDir: currentDir,
+                  storage: storage,
+                  filesToMove: selectedFiles.map((e) => e.path).toList(),
+                ),
               ),
             ),
             icon: const Icon(Icons.drive_file_move_outlined),
@@ -179,21 +186,15 @@ class _MainPageState extends State<MainPage> {
       );
     } else {
       return AppBar(
-        leading: widget.currentDir == null
+        leading: currentDir == null
             ? null
             : IconButton(
                 onPressed: () {
-                  final prevRoute = widget.currentDir!.split('/')..removeLast();
-                  Navigator.pushReplacement(
-                    context,
-                    PageTransition(
-                      type: PageTransitionType.leftToRight,
-                      child: prevRoute.join('/') == '' ? const MainPage() : MainPage(currentDir: prevRoute.join('/')),
-                    ),
-                  );
+                  final prevRoute = currentDir!.split('/')..removeLast();
+                  _transitionDirectory(prevRoute.join('/') == '' ? null : prevRoute.join('/'));
                 },
                 icon: const Icon(Icons.arrow_back)),
-        title: Text(widget.currentDir != null ? p.basename(widget.currentDir!) : 'File Server'),
+        title: Text(currentDir != null ? p.basename(currentDir!) : 'File Server'),
       );
     }
   }
@@ -252,13 +253,7 @@ class _MainPageState extends State<MainPage> {
                       return setState(() {});
                     }
                     if (_data!.files[index].isDirectory) {
-                      Navigator.pushReplacement(
-                        context,
-                        PageTransition(
-                          type: PageTransitionType.rightToLeft,
-                          child: MainPage(currentDir: _data!.files[index].path),
-                        ),
-                      );
+                      _transitionDirectory(_data!.files[index].path);
                     } else if (getIcon(_data!.files[index]) == Icons.image) {
                       //TODO: Improve these
                       final imagePath = _data!.files[index].path;
@@ -306,6 +301,7 @@ class _MainPageState extends State<MainPage> {
         return const Center(child: Text('Something went wrong'));
       }
     } else {
+      //TODO: Delay showing indicator if data loads fast
       return Center(
         child: CircularProgressIndicator(
           color: Theme.of(context).colorScheme.secondary,
@@ -324,15 +320,9 @@ class _MainPageState extends State<MainPage> {
         if (selectMode) {
           _setSelectMode(false);
           return false;
-        } else if (widget.currentDir != null) {
-          final prevRoute = widget.currentDir!.split('/')..removeLast();
-          Navigator.pushReplacement(
-            context,
-            PageTransition(
-              type: PageTransitionType.leftToRight,
-              child: prevRoute.join('/') == '' ? const MainPage() : MainPage(currentDir: prevRoute.join('/')),
-            ),
-          );
+        } else if (currentDir != null) {
+          final prevRoute = currentDir!.split('/')..removeLast();
+          _transitionDirectory(currentDir = prevRoute.join('/') == '' ? null : prevRoute.join('/'));
           return false;
         } else {
           return true;
@@ -417,7 +407,17 @@ class _MainPageState extends State<MainPage> {
   }
 
   //* Init functions to fetch and refresh data
+  Future<void> _transitionDirectory(String? newDir) async {
+    socket.off(currentDir != null ? currentDir! : '/', _handleSocketEvent);
+    currentDir = newDir;
+    await _refreshData();
+    socket.on(currentDir != null ? currentDir! : '/', _handleSocketEvent);
+  }
+
   Future<void> _refreshData() async {
+    setState(() {
+      connectionDone = false;
+    });
     final newData = await _fetchData(); // fetch new data from the API
     setState(() {
       _data = newData; // update the separate state variable with the new data
@@ -425,7 +425,7 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<ApiListResponseList?> _fetchData() async {
-    final pathDir = widget.currentDir != null ? widget.currentDir! : '/';
+    final pathDir = currentDir != null ? currentDir! : '/';
     final response = await http.get(Uri.parse('$apiUrl/list$pathDir'));
     if (response.statusCode == 200) {
       var parsedResponse = ApiListResponseList.fromJson(jsonDecode(response.body));
@@ -639,8 +639,9 @@ class _MainPageState extends State<MainPage> {
         final token = await storage.read(key: 'token');
         if (token != null) {
           List<File> files = result.paths.map((path) => File(path!)).toList();
-          final pathDir = widget.currentDir != null ? widget.currentDir! : '/';
+          final pathDir = currentDir != null ? currentDir! : '/';
           final url = Uri.parse('$apiUrl/upload$pathDir');
+          //TODO: Keep track of upload progress
           final request = http.MultipartRequest('POST', url);
           for (int i = 0; i < files.length; i++) {
             request.files.add(await http.MultipartFile.fromPath('upload-file', files[i].path));
@@ -667,6 +668,7 @@ class _MainPageState extends State<MainPage> {
     );
     Navigator.pop(context);
 
+    //TODO: Add default folder name
     showDialog(
       context: context,
       builder: (context) {
@@ -702,7 +704,7 @@ class _MainPageState extends State<MainPage> {
               width: 70,
               child: TextButton(
                 onPressed: () {
-                  final currentPath = widget.currentDir != null ? widget.currentDir! : '/';
+                  final currentPath = currentDir != null ? currentDir! : '/';
                   storage.read(key: 'token').then((token) {
                     if (token != null) {
                       http.post(

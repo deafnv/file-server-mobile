@@ -26,12 +26,16 @@ class MoveSelect extends StatefulWidget {
 class _MoveSelectState extends State<MoveSelect> {
   final apiUrl = dotenv.env['API_URL']!;
 
+  String? currentDir;
+
   ApiListResponseList? _data;
   bool connectionDone = false;
 
   @override
   void initState() {
     super.initState();
+
+    if (widget.currentDir != null) currentDir = widget.currentDir;
 
     //* Get data on init
     _fetchData().then((data) {
@@ -52,17 +56,10 @@ class _MoveSelectState extends State<MoveSelect> {
                 return ListTile(
                   leading: Icon(getIcon(_data!.files[index])),
                   title: Text(_data!.files[index].name),
-                  onTap: () => Navigator.pushReplacement(
-                    context,
-                    PageTransition(
-                      type: PageTransitionType.rightToLeft,
-                      child: MoveSelect(
-                        storage: widget.storage,
-                        filesToMove: widget.filesToMove,
-                        currentDir: _data!.files[index].path,
-                      ),
-                    ),
-                  ),
+                  onTap: () {
+                    currentDir = _data!.files[index].path;
+                    _refreshData();
+                  },
                 );
               } else {
                 return Opacity(
@@ -98,24 +95,10 @@ class _MoveSelectState extends State<MoveSelect> {
 
     return WillPopScope(
       onWillPop: () async {
-        if (widget.currentDir != null) {
-          final prevRoute = widget.currentDir!.split('/')..removeLast();
-          Navigator.pushReplacement(
-            context,
-            PageTransition(
-              type: PageTransitionType.leftToRight,
-              child: prevRoute.join('/') == ''
-                  ? MoveSelect(
-                      storage: widget.storage,
-                      filesToMove: widget.filesToMove,
-                    )
-                  : MoveSelect(
-                      storage: widget.storage,
-                      filesToMove: widget.filesToMove,
-                      currentDir: prevRoute.join('/'),
-                    ),
-            ),
-          );
+        if (currentDir != null) {
+          final prevRoute = currentDir!.split('/')..removeLast();
+          currentDir = prevRoute.join('/') == '' ? null : prevRoute.join('/');
+          _refreshData();
           return false;
         } else {
           Navigator.pushReplacement(
@@ -134,24 +117,10 @@ class _MoveSelectState extends State<MoveSelect> {
         appBar: AppBar(
           leading: IconButton(
               onPressed: () {
-                if (widget.currentDir != null) {
-                  final prevRoute = widget.currentDir!.split('/')..removeLast();
-                  Navigator.pushReplacement(
-                    context,
-                    PageTransition(
-                      type: PageTransitionType.leftToRight,
-                      child: prevRoute.join('/') == ''
-                          ? MoveSelect(
-                              storage: widget.storage,
-                              filesToMove: widget.filesToMove,
-                            )
-                          : MoveSelect(
-                              storage: widget.storage,
-                              filesToMove: widget.filesToMove,
-                              currentDir: prevRoute.join('/'),
-                            ),
-                    ),
-                  );
+                if (currentDir != null) {
+                  final prevRoute = currentDir!.split('/')..removeLast();
+                  currentDir = prevRoute.join('/') == '' ? null : prevRoute.join('/');
+                  _refreshData();
                 } else {
                   Navigator.pushReplacement(
                     context,
@@ -163,7 +132,7 @@ class _MoveSelectState extends State<MoveSelect> {
                 }
               },
               icon: const Icon(Icons.arrow_back)),
-          title: Text(widget.currentDir != null ? p.basename(widget.currentDir!) : 'Root'),
+          title: Text(currentDir != null ? p.basename(currentDir!) : 'Root'),
         ),
         body: _loadUI(scaffoldKey),
         bottomSheet: Container(
@@ -193,7 +162,8 @@ class _MoveSelectState extends State<MoveSelect> {
                 const SizedBox(width: 16),
                 TextButton(
                   onPressed: () {
-                    final currentPath = widget.currentDir != null ? widget.currentDir! : '/';
+                    //TODO: Prevent moving into same directory
+                    final currentPath = currentDir != null ? currentDir! : '/';
                     widget.storage.read(key: 'token').then((token) {
                       if (token != null) {
                         http.post(
@@ -215,7 +185,7 @@ class _MoveSelectState extends State<MoveSelect> {
                         context,
                         PageTransition(
                           type: PageTransitionType.leftToRight,
-                          child: MainPage(currentDir: widget.currentDir),
+                          child: MainPage(currentDir: currentDir),
                         ),
                       );
                     });
@@ -252,8 +222,18 @@ class _MoveSelectState extends State<MoveSelect> {
     scaffoldKey.currentState!.showSnackBar(snackBar);
   }
 
+  Future<void> _refreshData() async {
+    setState(() {
+      connectionDone = false;
+    });
+    final newData = await _fetchData(); // fetch new data from the API
+    setState(() {
+      _data = newData; // update the separate state variable with the new data
+    });
+  }
+
   Future<ApiListResponseList?> _fetchData() async {
-    final pathDir = widget.currentDir != null ? widget.currentDir! : '/';
+    final pathDir = currentDir != null ? currentDir! : '/';
     final response = await http.get(Uri.parse('$apiUrl/list$pathDir'));
     if (response.statusCode == 200) {
       var parsedResponse = ApiListResponseList.fromJson(jsonDecode(response.body));
