@@ -194,97 +194,106 @@ class _MainPageState extends State<MainPage> {
   _loadUI(GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     if (connectionDone) {
       if (_data != null) {
-        return ListView.builder(
-            itemCount: _data!.files.length,
-            itemBuilder: (context, index) {
-              return ListTile(
-                tileColor: selectedFiles.contains(_data!.files[index]) ? Colors.grey : Colors.transparent,
-                leading: selectMode && selectedFiles.contains(_data!.files[index])
-                    ? const Icon(Icons.done)
-                    : Icon(_getIcon(_data!.files[index])),
-                trailing: selectMode
-                    ? null
-                    : Theme(
-                        data: Theme.of(context).copyWith(dividerColor: Colors.white),
-                        child: PopupMenuButton<ContextMenuItems>(
-                          onSelected: (value) => _contextMenuSelect(value, index, scaffoldKey),
-                          splashRadius: 24,
-                          itemBuilder: (BuildContext context) => [
-                            const PopupMenuItem(
-                              value: ContextMenuItems.openinbrowser,
-                              child: Text("Open in browser"),
-                            ),
-                            const PopupMenuItem(
-                              value: ContextMenuItems.copy,
-                              child: Text("Copy"),
-                            ),
-                            const PopupMenuDivider(),
-                            const PopupMenuItem(
-                              value: ContextMenuItems.delete,
-                              child: Text("Delete"),
-                            ),
-                            const PopupMenuItem(
-                              value: ContextMenuItems.rename,
-                              child: Text("Rename"),
-                            ),
-                            const PopupMenuDivider(),
-                            const PopupMenuItem(
-                              value: ContextMenuItems.download,
-                              child: Text("Download"),
-                            )
-                          ],
+        if (_data!.files.isNotEmpty) {
+          return ListView.builder(
+              itemCount: _data!.files.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  tileColor: selectedFiles.contains(_data!.files[index]) ? Colors.grey : Colors.transparent,
+                  leading: selectMode && selectedFiles.contains(_data!.files[index])
+                      ? const Icon(Icons.done)
+                      : Icon(_getIcon(_data!.files[index])),
+                  trailing: selectMode
+                      ? null
+                      : Theme(
+                          data: Theme.of(context).copyWith(dividerColor: Colors.white),
+                          child: PopupMenuButton<ContextMenuItems>(
+                            onSelected: (value) => _contextMenuSelect(value, index, scaffoldKey),
+                            splashRadius: 24,
+                            itemBuilder: (BuildContext context) => [
+                              const PopupMenuItem(
+                                value: ContextMenuItems.openinbrowser,
+                                child: Text("Open in browser"),
+                              ),
+                              const PopupMenuItem(
+                                value: ContextMenuItems.copy,
+                                child: Text("Copy"),
+                              ),
+                              const PopupMenuDivider(),
+                              const PopupMenuItem(
+                                value: ContextMenuItems.delete,
+                                child: Text("Delete"),
+                              ),
+                              const PopupMenuItem(
+                                value: ContextMenuItems.rename,
+                                child: Text("Rename"),
+                              ),
+                              const PopupMenuDivider(),
+                              const PopupMenuItem(
+                                value: ContextMenuItems.download,
+                                child: Text("Download"),
+                              )
+                            ],
+                          ),
                         ),
-                      ),
-                title: Text(_data!.files[index].name),
-                onTap: () async {
-                  if (selectMode) {
+                  title: Text(_data!.files[index].name),
+                  onTap: () async {
+                    if (selectMode) {
+                      selectedFiles.contains(_data!.files[index])
+                          ? selectedFiles.remove(_data!.files[index])
+                          : selectedFiles.add(_data!.files[index]);
+                      if (selectedFiles.isEmpty) {
+                        return _setSelectMode(false);
+                      }
+                      return setState(() {});
+                    }
+                    if (_data!.files[index].isDirectory) {
+                      Navigator.pushReplacement(
+                        context,
+                        PageTransition(
+                          type: PageTransitionType.rightToLeft,
+                          child: MainPage(currentDir: _data!.files[index].path),
+                        ),
+                      );
+                    } else if (_getIcon(_data!.files[index]) == Icons.image) {
+                      //TODO: Improve these
+                      final imagePath = _data!.files[index].path;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ViewImage(url: '$apiUrl/retrieve$imagePath'),
+                        ),
+                      );
+                    } else if (_getIcon(_data!.files[index]) == Icons.movie) {
+                      final imagePath = _data!.files[index].path;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VideoPlayerScreen(url: '$apiUrl/retrieve$imagePath'),
+                        ),
+                      );
+                    }
+                  },
+                  onLongPress: () {
                     selectedFiles.contains(_data!.files[index])
                         ? selectedFiles.remove(_data!.files[index])
                         : selectedFiles.add(_data!.files[index]);
                     if (selectedFiles.isEmpty) {
-                      return _setSelectMode(false);
+                      _setSelectMode(false);
+                    } else {
+                      _setSelectMode(true);
                     }
-                    return setState(() {});
-                  }
-                  if (_data!.files[index].isDirectory) {
-                    Navigator.pushReplacement(
-                      context,
-                      PageTransition(
-                        type: PageTransitionType.rightToLeft,
-                        child: MainPage(currentDir: _data!.files[index].path),
-                      ),
-                    );
-                  } else if (_getIcon(_data!.files[index]) == Icons.image) {
-                    //TODO: Improve these
-                    final imagePath = _data!.files[index].path;
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ViewImage(url: '$apiUrl/retrieve$imagePath'),
-                      ),
-                    );
-                  } else if (_getIcon(_data!.files[index]) == Icons.movie) {
-                    final imagePath = _data!.files[index].path;
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => VideoPlayerScreen(url: '$apiUrl/retrieve$imagePath'),
-                      ),
-                    );
-                  }
-                },
-                onLongPress: () {
-                  selectedFiles.contains(_data!.files[index])
-                      ? selectedFiles.remove(_data!.files[index])
-                      : selectedFiles.add(_data!.files[index]);
-                  if (selectedFiles.isEmpty) {
-                    _setSelectMode(false);
-                  } else {
-                    _setSelectMode(true);
-                  }
-                },
-              );
-            });
+                  },
+                );
+              });
+        } else {
+          return const Center(
+            child: Text(
+              'No files here',
+              style: TextStyle(fontSize: 18),
+            ),
+          );
+        }
       } else {
         return const Center(child: Text('Something went wrong'));
       }
