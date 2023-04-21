@@ -10,6 +10,7 @@ import path_provider_foundation
 import rich_clipboard_macos
 import shared_preferences_foundation
 import url_launcher_macos
+import wakelock_macos
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   FlutterSecureStoragePlugin.register(with: registry.registrar(forPlugin: "FlutterSecureStoragePlugin"))
@@ -17,4 +18,5 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   RichClipboardPlugin.register(with: registry.registrar(forPlugin: "RichClipboardPlugin"))
   SharedPreferencesPlugin.register(with: registry.registrar(forPlugin: "SharedPreferencesPlugin"))
   UrlLauncherPlugin.register(with: registry.registrar(forPlugin: "UrlLauncherPlugin"))
+  WakelockMacosPlugin.register(with: registry.registrar(forPlugin: "WakelockMacosPlugin"))
 }

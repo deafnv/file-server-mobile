@@ -45,36 +45,32 @@ class MyApp extends StatelessWidget {
       scaffoldMessengerKey: scaffoldKey,
       title: 'File Server',
       theme: ThemeData(
-          brightness: Brightness.dark,
-          primaryColor: Colors.white,
-          colorScheme: const ColorScheme.dark(
-            primary: Color.fromARGB(252, 37, 37, 37),
-            secondary: Colors.lightBlue,
-            tertiary: Color.fromARGB(255, 226, 57, 170),
+        brightness: Brightness.dark,
+        primaryColor: Colors.white,
+        colorScheme: const ColorScheme.dark(
+          primary: Color.fromARGB(252, 37, 37, 37),
+          secondary: Colors.lightBlue,
+          tertiary: Color.fromARGB(255, 226, 57, 170),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ButtonStyle(
+            backgroundColor: MaterialStateProperty.resolveWith<Color?>((Set<MaterialState> states) {
+              return Theme.of(context).colorScheme.secondary;
+            }),
           ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ButtonStyle(
-              backgroundColor: MaterialStateProperty.resolveWith<Color?>((Set<MaterialState> states) {
-                return Theme.of(context).colorScheme.secondary;
-              }),
+        ),
+        //scaffoldBackgroundColor: Color.fromARGB(235, 255, 255, 255),
+        textTheme: Theme.of(context).textTheme.apply(
+              fontFamily: 'Futura', //FIXME: change this
+              bodyColor: Colors.white,
+              displayColor: Colors.white,
             ),
-          ),
-          /* ColorScheme.fromSwatch().copyWith(
-      //TODO: add method for user to change theme in app & more themes
-      primary: Color.fromARGB(252, 37, 37, 37),
-      secondary: Colors.lightBlue,
-    ), */
-          //scaffoldBackgroundColor: Color.fromARGB(235, 255, 255, 255),
-          textTheme: Theme.of(context).textTheme.apply(
-                fontFamily: 'Futura', //FIXME: change this
-                bodyColor: Colors.white,
-                displayColor: Colors.white,
-              ),
-          textSelectionTheme: TextSelectionThemeData(
-            cursorColor: Theme.of(context).colorScheme.secondary,
-            selectionColor: Theme.of(context).colorScheme.secondary,
-            selectionHandleColor: Theme.of(context).colorScheme.tertiary,
-          )),
+        textSelectionTheme: TextSelectionThemeData(
+          cursorColor: Theme.of(context).colorScheme.secondary,
+          selectionColor: Theme.of(context).colorScheme.secondary,
+          selectionHandleColor: Theme.of(context).colorScheme.tertiary,
+        ),
+      ),
       home: const MainPage(),
     );
   }
