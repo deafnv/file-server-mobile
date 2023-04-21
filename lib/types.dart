@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class ApiListResponse {
   final String name;
   final String path;
@@ -43,3 +45,21 @@ class ApiListResponseList {
 }
 
 enum SnackbarStatus { warning }
+
+IconData? getIcon(ApiListResponse file) {
+  if (file.isDirectory) return Icons.folder;
+  final splitName = file.name.split('.');
+  final extension = splitName[splitName.length - 1];
+  if (splitName.length == 1) return null;
+  if (['zip', '7z', 'rar'].contains(extension)) return Icons.folder_zip;
+  if (['doc', 'docx', 'txt', 'pdf'].contains(extension)) return Icons.article;
+  if (['mkv', 'mp4', 'webm', 'ogg'].contains(extension)) return Icons.movie;
+  if (['png', 'jpg', 'jpeg', 'gif'].contains(extension)) return Icons.image;
+  if (['wav', 'mp3', 'aac', 'flac', 'm4a'].contains(extension)) return Icons.audio_file;
+  if (['json', 'jsonl'].contains(extension)) return Icons.data_object;
+  if (['js', 'jsx', 'css', 'ts', 'tsx'].contains(extension)) return Icons.code;
+  if (['xlsx', 'xls', 'csv'].contains(extension)) return Icons.list_alt;
+  if (['ass', 'srt', 'vtt'].contains(extension)) return Icons.closed_caption;
+  if (['exe'].contains(extension)) return Icons.terminal;
+  return Icons.insert_drive_file;
+}

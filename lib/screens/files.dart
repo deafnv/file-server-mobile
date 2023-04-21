@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
+import 'package:file_server_mobile/screens/move_select.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
@@ -26,7 +27,7 @@ import './image_viewer.dart';
 import './video_player.dart';
 import 'package:file_server_mobile/app_data.dart';
 
-enum ContextMenuItems { openinbrowser, copy, rename, move, download }
+enum ContextMenuItems { openinbrowser, copy, rename, download }
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key, this.currentDir});
@@ -149,7 +150,13 @@ class _MainPageState extends State<MainPage> {
           IconButton(
             tooltip: 'Move',
             splashRadius: 24,
-            onPressed: () {},
+            onPressed: () => Navigator.pushReplacement(
+              context,
+              PageTransition(
+                type: PageTransitionType.leftToRight,
+                child: MoveSelect(storage: storage, filesToMove: selectedFiles.map((e) => e.path).toList()),
+              ),
+            ),
             icon: const Icon(Icons.drive_file_move_outlined),
           ),
           IconButton(
@@ -203,7 +210,7 @@ class _MainPageState extends State<MainPage> {
                   tileColor: selectedFiles.contains(_data!.files[index]) ? Colors.grey : Colors.transparent,
                   leading: selectMode && selectedFiles.contains(_data!.files[index])
                       ? const Icon(Icons.done)
-                      : Icon(_getIcon(_data!.files[index])),
+                      : Icon(getIcon(_data!.files[index])),
                   trailing: selectMode
                       ? null
                       : Theme(
@@ -252,7 +259,7 @@ class _MainPageState extends State<MainPage> {
                           child: MainPage(currentDir: _data!.files[index].path),
                         ),
                       );
-                    } else if (_getIcon(_data!.files[index]) == Icons.image) {
+                    } else if (getIcon(_data!.files[index]) == Icons.image) {
                       //TODO: Improve these
                       final imagePath = _data!.files[index].path;
                       Navigator.push(
@@ -261,7 +268,7 @@ class _MainPageState extends State<MainPage> {
                           builder: (context) => ViewImage(url: '$apiUrl/retrieve$imagePath'),
                         ),
                       );
-                    } else if (_getIcon(_data!.files[index]) == Icons.movie) {
+                    } else if (getIcon(_data!.files[index]) == Icons.movie) {
                       final imagePath = _data!.files[index].path;
                       Navigator.push(
                         context,
@@ -747,23 +754,5 @@ class _MainPageState extends State<MainPage> {
 
     scaffoldKey.currentState!.clearSnackBars();
     scaffoldKey.currentState!.showSnackBar(snackBar);
-  }
-
-  IconData? _getIcon(ApiListResponse file) {
-    if (file.isDirectory) return Icons.folder;
-    final splitName = file.name.split('.');
-    final extension = splitName[splitName.length - 1];
-    if (splitName.length == 1) return null;
-    if (['zip', '7z', 'rar'].contains(extension)) return Icons.folder_zip;
-    if (['doc', 'docx', 'txt', 'pdf'].contains(extension)) return Icons.article;
-    if (['mkv', 'mp4', 'webm', 'ogg'].contains(extension)) return Icons.movie;
-    if (['png', 'jpg', 'jpeg', 'gif'].contains(extension)) return Icons.image;
-    if (['wav', 'mp3', 'aac', 'flac', 'm4a'].contains(extension)) return Icons.audio_file;
-    if (['json', 'jsonl'].contains(extension)) return Icons.data_object;
-    if (['js', 'jsx', 'css', 'ts', 'tsx'].contains(extension)) return Icons.code;
-    if (['xlsx', 'xls', 'csv'].contains(extension)) return Icons.list_alt;
-    if (['ass', 'srt', 'vtt'].contains(extension)) return Icons.closed_caption;
-    if (['exe'].contains(extension)) return Icons.terminal;
-    return Icons.insert_drive_file;
   }
 }
