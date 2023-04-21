@@ -17,6 +17,8 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:file_picker/file_picker.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:path/path.dart' as p;
+import 'package:page_transition/page_transition.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../types.dart';
@@ -30,7 +32,7 @@ enum ContextMenuItems { openinbrowser, copy, delete, rename, move }
 class MainPage extends StatefulWidget {
   const MainPage({super.key, this.currentDir});
 
-  final ApiListResponse? currentDir;
+  final String? currentDir;
 
   @override
   State<MainPage> createState() => _MainPageState();
@@ -40,7 +42,10 @@ class _MainPageState extends State<MainPage> {
   final apiUrl = dotenv.env['API_URL']!;
 
   ApiListResponseList? _data;
+  Map<String, dynamic>? _fileTreeData;
   bool connectionDone = false;
+  bool connectionDoneFileTree = false;
+
   bool selectMode = false;
   List<ApiListResponse> selectedFiles = [];
 
@@ -62,6 +67,7 @@ class _MainPageState extends State<MainPage> {
   }
 
   _handleSocketEvent(dynamic data) => _refreshData();
+  _handleFileTreeEvent(dynamic data) => _refreshFileTree();
 
   @override
   void initState() {
@@ -72,7 +78,8 @@ class _MainPageState extends State<MainPage> {
       'autoConnect': false,
     });
     socket.connect();
-    socket.on(widget.currentDir != null ? widget.currentDir!.path : '/', _handleSocketEvent);
+    socket.on(widget.currentDir != null ? widget.currentDir! : '/', _handleSocketEvent);
+    socket.on('filetree', _handleFileTreeEvent);
 
     AndroidOptions getAndroidOptions() => const AndroidOptions(
           encryptedSharedPreferences: true,
@@ -89,7 +96,13 @@ class _MainPageState extends State<MainPage> {
       });
     });
 
-    BackButtonInterceptor.add(exitSelectModeBack);
+    _fetchFileTree().then((data) {
+      setState(() {
+        _fileTreeData = data;
+      });
+    });
+
+    BackButtonInterceptor.add(handleBack);
 
     IsolateNameServer.registerPortWithName(_port.sendPort, 'downloader_send_port');
     /* _port.listen((dynamic data) {
@@ -102,18 +115,30 @@ class _MainPageState extends State<MainPage> {
 
   @override
   void dispose() {
-    BackButtonInterceptor.remove(exitSelectModeBack);
+    BackButtonInterceptor.remove(handleBack);
     IsolateNameServer.removePortNameMapping('downloader_send_port');
 
     //TODO: Investigate if this is sufficient to prevent unnecessary refreshes, might need RouteObserver
-    socket.off(widget.currentDir != null ? widget.currentDir!.path : '/', _handleSocketEvent);
+    socket.off(widget.currentDir != null ? widget.currentDir! : '/', _handleSocketEvent);
+    socket.off('filetree', _handleFileTreeEvent);
     socket.disconnect();
     super.dispose();
   }
 
-  bool exitSelectModeBack(bool stopDefaultButtonEvent, RouteInfo info) {
+  bool handleBack(bool stopDefaultButtonEvent, RouteInfo info) {
+    //* Exiting out of select mode
     if (selectMode) {
       _setSelectMode(false);
+      return true;
+    } else if (widget.currentDir != null) {
+      final prevRoute = widget.currentDir!.split('/')..removeLast();
+      Navigator.pushReplacement(
+        context,
+        PageTransition(
+          type: PageTransitionType.leftToRight,
+          child: prevRoute.join('/') == '' ? const MainPage() : MainPage(currentDir: prevRoute.join('/')),
+        ),
+      );
       return true;
     } else {
       return false;
@@ -162,10 +187,17 @@ class _MainPageState extends State<MainPage> {
             ? null
             : IconButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  final prevRoute = widget.currentDir!.split('/')..removeLast();
+                  Navigator.pushReplacement(
+                    context,
+                    PageTransition(
+                      type: PageTransitionType.leftToRight,
+                      child: prevRoute.join('/') == '' ? const MainPage() : MainPage(currentDir: prevRoute.join('/')),
+                    ),
+                  );
                 },
                 icon: const Icon(Icons.arrow_back)),
-        title: Text(widget.currentDir?.name ?? 'File Server'),
+        title: Text(widget.currentDir != null ? p.basename(widget.currentDir!) : 'File Server'),
       );
     }
   }
@@ -221,9 +253,12 @@ class _MainPageState extends State<MainPage> {
                     return setState(() {});
                   }
                   if (_data!.files[index].isDirectory) {
-                    Navigator.push(
+                    Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (context) => MainPage(currentDir: _data!.files[index])),
+                      PageTransition(
+                        type: PageTransitionType.rightToLeft,
+                        child: MainPage(currentDir: _data!.files[index].path),
+                      ),
                     );
                   } /* else if (_getIcon(snapshot.data!.files[index]) == Icons.image) { //TODO: Reenable these after improving them
                     final imagePath = snapshot.data!.files[index].path;
@@ -271,7 +306,7 @@ class _MainPageState extends State<MainPage> {
 
     return Scaffold(
       appBar: _loadAppBar(scaffoldKey),
-      drawer: prefs != null ? CustomDrawer(storage: storage, prefs: prefs!) : null,
+      drawer: prefs != null ? CustomDrawer(storage: storage, prefs: prefs!, fileTreeData: _fileTreeData) : null,
       body: _loadUI(scaffoldKey),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -344,6 +379,7 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
+  //* Init functions to fetch and refresh data
   Future<void> _refreshData() async {
     final newData = await _fetchData(); // fetch new data from the API
     setState(() {
@@ -352,7 +388,7 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<ApiListResponseList?> _fetchData() async {
-    final pathDir = widget.currentDir == null ? '/' : widget.currentDir!.path;
+    final pathDir = widget.currentDir != null ? widget.currentDir! : '/';
     final response = await http.get(Uri.parse('$apiUrl/list$pathDir'));
     if (response.statusCode == 200) {
       var parsedResponse = ApiListResponseList.fromJson(jsonDecode(response.body));
@@ -370,8 +406,27 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
+  Future<void> _refreshFileTree() async {
+    final newData = await _fetchFileTree(); // fetch new data from the API
+    setState(() {
+      _fileTreeData = newData; // update the separate state variable with the new data
+    });
+  }
+
+  Future<Map<String, dynamic>?> _fetchFileTree() async {
+    final response = await http.get(Uri.parse('$apiUrl/filetree'));
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> fileTree = jsonDecode(response.body);
+      connectionDoneFileTree = true;
+      return fileTree;
+    } else {
+      connectionDoneFileTree = true;
+      return null;
+    }
+  }
+
   //* onSelect function for file context menu
-  _contextMenuSelect(ContextMenuItems value, int index, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
+  void _contextMenuSelect(ContextMenuItems value, int index, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     final filePath = _data!.files[index].path;
     final fileUrl = _data!.files[index].isDirectory ? '$apiUrl/list$filePath' : '$apiUrl/retrieve$filePath';
     switch (value) {
@@ -398,7 +453,7 @@ class _MainPageState extends State<MainPage> {
   }
 
   //* State changing interactions
-  _renameFile(String filePath, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
+  void _renameFile(String filePath, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     final newFileNameController = TextEditingController();
     final textFieldBorderStyle = OutlineInputBorder(
       borderSide: BorderSide(width: 2, color: Theme.of(context).colorScheme.secondary),
@@ -471,7 +526,7 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  _deleteFiles(List<String> filePaths, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
+  void _deleteFiles(List<String> filePaths, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     showDialog(
       context: context,
       builder: (context) {
@@ -526,7 +581,7 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  _uploadFile(GlobalKey<ScaffoldMessengerState> scaffoldKey) async {
+  void _uploadFile(GlobalKey<ScaffoldMessengerState> scaffoldKey) async {
     var permStorage = await Permission.storage.request();
     if (!permStorage.isGranted) {
       Fluttertoast.showToast(msg: 'Please allow storage permissions to upload');
@@ -540,7 +595,7 @@ class _MainPageState extends State<MainPage> {
         final token = await storage.read(key: 'token');
         if (token != null) {
           List<File> files = result.paths.map((path) => File(path!)).toList();
-          final pathDir = widget.currentDir == null ? '/' : widget.currentDir!.path;
+          final pathDir = widget.currentDir != null ? widget.currentDir! : '/';
           final url = Uri.parse('$apiUrl/upload$pathDir');
           final request = http.MultipartRequest('POST', url);
           for (int i = 0; i < files.length; i++) {
@@ -561,7 +616,7 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
-  _newFolder(BuildContext context, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
+  void _newFolder(BuildContext context, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     final newFolderNameController = TextEditingController();
     final textFieldBorderStyle = OutlineInputBorder(
       borderSide: BorderSide(width: 2, color: Theme.of(context).colorScheme.secondary),
@@ -603,7 +658,7 @@ class _MainPageState extends State<MainPage> {
               width: 70,
               child: TextButton(
                 onPressed: () {
-                  final currentPath = widget.currentDir != null ? widget.currentDir!.path : '/';
+                  final currentPath = widget.currentDir != null ? widget.currentDir! : '/';
                   storage.read(key: 'token').then((token) {
                     if (token != null) {
                       http.post(
