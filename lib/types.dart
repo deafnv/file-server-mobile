@@ -28,22 +28,6 @@ class ApiListResponse {
   }
 }
 
-class ApiListResponseList {
-  final List<ApiListResponse> files;
-
-  const ApiListResponseList({
-    required this.files,
-  });
-
-  factory ApiListResponseList.fromJson(List<dynamic> json) {
-    final List<ApiListResponse> files = [];
-    for (final file in json) {
-      files.add(ApiListResponse.fromJson(file));
-    }
-    return ApiListResponseList(files: files);
-  }
-}
-
 class ImageGalleryImages {
   final String path;
   final String name;

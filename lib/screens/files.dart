@@ -42,7 +42,7 @@ class _MainPageState extends State<MainPage> {
   final apiUrl = dotenv.env['API_URL']!;
 
   String? currentDir;
-  ApiListResponseList? _data;
+  List<ApiListResponse>? _data;
   Map<String, dynamic>? _fileTreeData;
   bool connectionDone = false;
   bool connectionDoneFileTree = false;
@@ -190,7 +190,7 @@ class _MainPageState extends State<MainPage> {
             tooltip: 'Select All',
             splashRadius: 24,
             onPressed: () {
-              selectedFiles = [..._data!.files];
+              selectedFiles = [..._data!];
               setState(() {});
               showSnackbar(scaffoldKey, 'All items selected');
             },
@@ -215,7 +215,7 @@ class _MainPageState extends State<MainPage> {
 
   _loadUI(GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     if (_data != null) {
-      if (_data!.files.isNotEmpty) {
+      if (_data!.isNotEmpty) {
         return Stack(
           children: [
             AnimatedOpacity(
@@ -225,14 +225,14 @@ class _MainPageState extends State<MainPage> {
                 scale: connectionDone ? 1 : 0.9,
                 duration: const Duration(milliseconds: 150),
                 child: ListView.builder(
-                  itemCount: _data!.files.length + 1,
+                  itemCount: _data!.length + 1,
                   itemBuilder: (context, index) {
-                    if (index != _data!.files.length) {
+                    if (index != _data!.length) {
                       return ListTile(
-                        tileColor: selectedFiles.contains(_data!.files[index]) ? Colors.grey : Colors.transparent,
-                        leading: selectMode && selectedFiles.contains(_data!.files[index])
+                        tileColor: selectedFiles.contains(_data![index]) ? Colors.grey : Colors.transparent,
+                        leading: selectMode && selectedFiles.contains(_data![index])
                             ? const Icon(Icons.done)
-                            : Icon(getIcon(_data!.files[index])),
+                            : Icon(getIcon(_data![index])),
                         trailing: selectMode
                             ? null
                             : Theme(
@@ -262,29 +262,29 @@ class _MainPageState extends State<MainPage> {
                                   ],
                                 ),
                               ),
-                        title: Text(_data!.files[index].name),
+                        title: Text(_data![index].name),
                         onTap: () async {
                           if (selectMode) {
-                            selectedFiles.contains(_data!.files[index])
-                                ? selectedFiles.remove(_data!.files[index])
-                                : selectedFiles.add(_data!.files[index]);
+                            selectedFiles.contains(_data![index])
+                                ? selectedFiles.remove(_data![index])
+                                : selectedFiles.add(_data![index]);
                             if (selectedFiles.isEmpty) {
                               return _setSelectMode(false);
                             }
                             return setState(() {});
                           }
-                          if (_data!.files[index].isDirectory) {
-                            _transitionDirectory(_data!.files[index].path);
-                          } else if (getIcon(_data!.files[index]) == Icons.image) {
+                          if (_data![index].isDirectory) {
+                            _transitionDirectory(_data![index].path);
+                          } else if (getIcon(_data![index]) == Icons.image) {
                             //TODO: Improve these
                             int counter = -1;
                             int selectedImageIndex = 0;
-                            final imagePaths = _data!.files
+                            final imagePaths = _data!
                                 .map((e) {
                                   if (getIcon(e) == Icons.image) {
                                     final imagePath = e.path;
                                     counter++;
-                                    if (imagePath == _data!.files[index].path) selectedImageIndex = counter;
+                                    if (imagePath == _data![index].path) selectedImageIndex = counter;
                                     return ImageGalleryImages(path: '$apiUrl/retrieve$imagePath', name: e.name);
                                   }
                                 })
@@ -299,8 +299,8 @@ class _MainPageState extends State<MainPage> {
                                 ),
                               ),
                             );
-                          } else if (getIcon(_data!.files[index]) == Icons.movie) {
-                            final imagePath = _data!.files[index].path;
+                          } else if (getIcon(_data![index]) == Icons.movie) {
+                            final imagePath = _data![index].path;
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -312,9 +312,9 @@ class _MainPageState extends State<MainPage> {
                           }
                         },
                         onLongPress: () {
-                          selectedFiles.contains(_data!.files[index])
-                              ? selectedFiles.remove(_data!.files[index])
-                              : selectedFiles.add(_data!.files[index]);
+                          selectedFiles.contains(_data![index])
+                              ? selectedFiles.remove(_data![index])
+                              : selectedFiles.add(_data![index]);
                           if (selectedFiles.isEmpty) {
                             _setSelectMode(false);
                           } else {
@@ -480,12 +480,13 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
-  Future<ApiListResponseList?> _fetchData() async {
+  Future<List<ApiListResponse>?> _fetchData() async {
     final pathDir = currentDir != null ? currentDir! : '/';
     final response = await http.get(Uri.parse('$apiUrl/list$pathDir'));
     if (response.statusCode == 200) {
-      var parsedResponse = ApiListResponseList.fromJson(jsonDecode(response.body));
-      parsedResponse.files.sort((a, b) {
+      List<ApiListResponse> parsedResponse =
+          jsonDecode(response.body).map((e) => ApiListResponse.fromJson(e)).toList().cast<ApiListResponse>();
+      parsedResponse.sort((a, b) {
         if (a.isDirectory && b.isDirectory) return a.name.compareTo(b.name);
         if (a.isDirectory && !b.isDirectory) return -1;
         if (!a.isDirectory && b.isDirectory) return 1;
@@ -520,8 +521,8 @@ class _MainPageState extends State<MainPage> {
 
   //* onSelect function for file context menu
   void _contextMenuSelect(ContextMenuItems value, int index, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
-    final filePath = _data!.files[index].path;
-    final fileUrl = _data!.files[index].isDirectory ? '$apiUrl/list$filePath' : '$apiUrl/retrieve$filePath';
+    final filePath = _data![index].path;
+    final fileUrl = _data![index].isDirectory ? '$apiUrl/list$filePath' : '$apiUrl/retrieve$filePath';
     switch (value) {
       case ContextMenuItems.openinbrowser:
         final uri = Uri.parse(fileUrl);

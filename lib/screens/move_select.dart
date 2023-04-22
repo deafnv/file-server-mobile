@@ -28,7 +28,7 @@ class _MoveSelectState extends State<MoveSelect> {
 
   String? currentDir;
 
-  ApiListResponseList? _data;
+  List<ApiListResponse>? _data;
   bool connectionDone = false;
 
   @override
@@ -47,7 +47,7 @@ class _MoveSelectState extends State<MoveSelect> {
 
   _loadUI(GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     if (_data != null) {
-      if (_data!.files.isNotEmpty) {
+      if (_data!.isNotEmpty) {
         return Stack(
           children: [
             AnimatedOpacity(
@@ -57,14 +57,14 @@ class _MoveSelectState extends State<MoveSelect> {
                 scale: connectionDone ? 1 : 0.9,
                 duration: const Duration(milliseconds: 150),
                 child: ListView.builder(
-                  itemCount: _data!.files.length,
+                  itemCount: _data!.length,
                   itemBuilder: (context, index) {
-                    if (_data!.files[index].isDirectory) {
+                    if (_data![index].isDirectory) {
                       return ListTile(
-                        leading: Icon(getIcon(_data!.files[index])),
-                        title: Text(_data!.files[index].name),
+                        leading: Icon(getIcon(_data![index])),
+                        title: Text(_data![index].name),
                         onTap: () {
-                          currentDir = _data!.files[index].path;
+                          currentDir = _data![index].path;
                           _refreshData();
                         },
                       );
@@ -72,8 +72,8 @@ class _MoveSelectState extends State<MoveSelect> {
                       return Opacity(
                         opacity: 0.4,
                         child: ListTile(
-                          leading: Icon(getIcon(_data!.files[index])),
-                          title: Text(_data!.files[index].name),
+                          leading: Icon(getIcon(_data![index])),
+                          title: Text(_data![index].name),
                         ),
                       );
                     }
@@ -258,12 +258,13 @@ class _MoveSelectState extends State<MoveSelect> {
     });
   }
 
-  Future<ApiListResponseList?> _fetchData() async {
+  Future<List<ApiListResponse>?> _fetchData() async {
     final pathDir = currentDir != null ? currentDir! : '/';
     final response = await http.get(Uri.parse('$apiUrl/list$pathDir'));
     if (response.statusCode == 200) {
-      var parsedResponse = ApiListResponseList.fromJson(jsonDecode(response.body));
-      parsedResponse.files.sort((a, b) {
+      List<ApiListResponse> parsedResponse =
+          jsonDecode(response.body).map((e) => ApiListResponse.fromJson(e)).toList().cast<ApiListResponse>();
+      parsedResponse.sort((a, b) {
         if (a.isDirectory && b.isDirectory) return a.name.compareTo(b.name);
         if (a.isDirectory && !b.isDirectory) return -1;
         if (!a.isDirectory && b.isDirectory) return 1;
