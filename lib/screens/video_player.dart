@@ -24,6 +24,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           videoPlayerController: _controller,
           autoPlay: true,
           hideControlsTimer: const Duration(seconds: 5),
+          customControls: const MaterialControls(),
           /* customControls: const CupertinoControls(
             backgroundColor: Colors.black,
             iconColor: Colors.white,

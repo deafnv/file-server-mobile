@@ -46,39 +46,65 @@ class _MoveSelectState extends State<MoveSelect> {
   }
 
   _loadUI(GlobalKey<ScaffoldMessengerState> scaffoldKey) {
-    if (connectionDone) {
-      if (_data != null) {
-        if (_data!.files.isNotEmpty) {
-          return ListView.builder(
-            itemCount: _data!.files.length,
-            itemBuilder: (context, index) {
-              if (_data!.files[index].isDirectory) {
-                return ListTile(
-                  leading: Icon(getIcon(_data!.files[index])),
-                  title: Text(_data!.files[index].name),
-                  onTap: () {
-                    currentDir = _data!.files[index].path;
-                    _refreshData();
+    if (_data != null) {
+      if (_data!.files.isNotEmpty) {
+        return Stack(
+          children: [
+            AnimatedOpacity(
+              opacity: connectionDone ? 1 : 0,
+              duration: const Duration(milliseconds: 150),
+              child: AnimatedScale(
+                scale: connectionDone ? 1 : 0.9,
+                duration: const Duration(milliseconds: 150),
+                child: ListView.builder(
+                  itemCount: _data!.files.length,
+                  itemBuilder: (context, index) {
+                    if (_data!.files[index].isDirectory) {
+                      return ListTile(
+                        leading: Icon(getIcon(_data!.files[index])),
+                        title: Text(_data!.files[index].name),
+                        onTap: () {
+                          currentDir = _data!.files[index].path;
+                          _refreshData();
+                        },
+                      );
+                    } else {
+                      return Opacity(
+                        opacity: 0.4,
+                        child: ListTile(
+                          leading: Icon(getIcon(_data!.files[index])),
+                          title: Text(_data!.files[index].name),
+                        ),
+                      );
+                    }
                   },
-                );
-              } else {
-                return Opacity(
-                  opacity: 0.4,
-                  child: ListTile(
-                    leading: Icon(getIcon(_data!.files[index])),
-                    title: Text(_data!.files[index].name),
-                  ),
-                );
-              }
-            },
-          );
-        } else {
-          return const Center(
-            child: Text('No files here'),
-          );
-        }
+                ),
+              ),
+            ),
+            AnimatedOpacity(
+              opacity: connectionDone ? 0 : 1,
+              duration: const Duration(milliseconds: 150),
+              child: FutureBuilder(
+                future: Future.delayed(const Duration(milliseconds: 100)),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.done) {
+                    return Center(
+                      child: CircularProgressIndicator(
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                    );
+                  } else {
+                    return Container();
+                  }
+                },
+              ),
+            ),
+          ],
+        );
       } else {
-        return const Center(child: Text('Something went wrong'));
+        return const Center(
+          child: Text('No files here'),
+        );
       }
     } else {
       return Center(

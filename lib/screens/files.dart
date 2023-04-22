@@ -214,138 +214,154 @@ class _MainPageState extends State<MainPage> {
   }
 
   _loadUI(GlobalKey<ScaffoldMessengerState> scaffoldKey) {
-    if (connectionDone) {
-      if (_data != null) {
-        if (_data!.files.isNotEmpty) {
-          return ListView.builder(
-            itemCount: _data!.files.length + 1,
-            itemBuilder: (context, index) {
-              if (index != _data!.files.length) {
-                return ListTile(
-                  tileColor: selectedFiles.contains(_data!.files[index]) ? Colors.grey : Colors.transparent,
-                  leading: selectMode && selectedFiles.contains(_data!.files[index])
-                      ? const Icon(Icons.done)
-                      : Icon(getIcon(_data!.files[index])),
-                  trailing: selectMode
-                      ? null
-                      : Theme(
-                          data: Theme.of(context).copyWith(dividerColor: Colors.white),
-                          child: PopupMenuButton<ContextMenuItems>(
-                            onSelected: (value) => _contextMenuSelect(value, index, scaffoldKey),
-                            splashRadius: 24,
-                            itemBuilder: (BuildContext context) => [
-                              const PopupMenuItem(
-                                value: ContextMenuItems.openinbrowser,
-                                child: Text("Open in browser"),
+    if (_data != null) {
+      if (_data!.files.isNotEmpty) {
+        return Stack(
+          children: [
+            AnimatedOpacity(
+              opacity: connectionDone ? 1 : 0,
+              duration: const Duration(milliseconds: 150),
+              child: AnimatedScale(
+                scale: connectionDone ? 1 : 0.9,
+                duration: const Duration(milliseconds: 150),
+                child: ListView.builder(
+                  itemCount: _data!.files.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index != _data!.files.length) {
+                      return ListTile(
+                        tileColor: selectedFiles.contains(_data!.files[index]) ? Colors.grey : Colors.transparent,
+                        leading: selectMode && selectedFiles.contains(_data!.files[index])
+                            ? const Icon(Icons.done)
+                            : Icon(getIcon(_data!.files[index])),
+                        trailing: selectMode
+                            ? null
+                            : Theme(
+                                data: Theme.of(context).copyWith(dividerColor: Colors.white),
+                                child: PopupMenuButton<ContextMenuItems>(
+                                  onSelected: (value) => _contextMenuSelect(value, index, scaffoldKey),
+                                  splashRadius: 24,
+                                  itemBuilder: (BuildContext context) => [
+                                    const PopupMenuItem(
+                                      value: ContextMenuItems.openinbrowser,
+                                      child: Text("Open in browser"),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: ContextMenuItems.copy,
+                                      child: Text("Copy"),
+                                    ),
+                                    const PopupMenuDivider(),
+                                    const PopupMenuItem(
+                                      value: ContextMenuItems.rename,
+                                      child: Text("Rename"),
+                                    ),
+                                    const PopupMenuDivider(),
+                                    const PopupMenuItem(
+                                      value: ContextMenuItems.download,
+                                      child: Text("Download"),
+                                    )
+                                  ],
+                                ),
                               ),
-                              const PopupMenuItem(
-                                value: ContextMenuItems.copy,
-                                child: Text("Copy"),
-                              ),
-                              const PopupMenuDivider(),
-                              const PopupMenuItem(
-                                value: ContextMenuItems.rename,
-                                child: Text("Rename"),
-                              ),
-                              const PopupMenuDivider(),
-                              const PopupMenuItem(
-                                value: ContextMenuItems.download,
-                                child: Text("Download"),
-                              )
-                            ],
-                          ),
-                        ),
-                  title: Text(_data!.files[index].name),
-                  onTap: () async {
-                    if (selectMode) {
-                      selectedFiles.contains(_data!.files[index])
-                          ? selectedFiles.remove(_data!.files[index])
-                          : selectedFiles.add(_data!.files[index]);
-                      if (selectedFiles.isEmpty) {
-                        return _setSelectMode(false);
-                      }
-                      return setState(() {});
-                    }
-                    if (_data!.files[index].isDirectory) {
-                      _transitionDirectory(_data!.files[index].path);
-                    } else if (getIcon(_data!.files[index]) == Icons.image) {
-                      //TODO: Improve these
-                      int counter = -1;
-                      int selectedImageIndex = 0;
-                      final imagePaths = _data!.files
-                          .map((e) {
-                            if (getIcon(e) == Icons.image) {
-                              final imagePath = e.path;
-                              counter++;
-                              if (imagePath == _data!.files[index].path) selectedImageIndex = counter;
-                              return ImageGalleryImages(path: '$apiUrl/retrieve$imagePath', name: e.name);
+                        title: Text(_data!.files[index].name),
+                        onTap: () async {
+                          if (selectMode) {
+                            selectedFiles.contains(_data!.files[index])
+                                ? selectedFiles.remove(_data!.files[index])
+                                : selectedFiles.add(_data!.files[index]);
+                            if (selectedFiles.isEmpty) {
+                              return _setSelectMode(false);
                             }
-                          })
-                          .whereType<ImageGalleryImages>()
-                          .toList();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ViewImage(
-                            images: imagePaths,
-                            initialIndex: selectedImageIndex,
-                          ),
-                        ),
-                      );
-                    } else if (getIcon(_data!.files[index]) == Icons.movie) {
-                      final imagePath = _data!.files[index].path;
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => VideoPlayerScreen(url: '$apiUrl/retrieve$imagePath'),
-                        ),
+                            return setState(() {});
+                          }
+                          if (_data!.files[index].isDirectory) {
+                            _transitionDirectory(_data!.files[index].path);
+                          } else if (getIcon(_data!.files[index]) == Icons.image) {
+                            //TODO: Improve these
+                            int counter = -1;
+                            int selectedImageIndex = 0;
+                            final imagePaths = _data!.files
+                                .map((e) {
+                                  if (getIcon(e) == Icons.image) {
+                                    final imagePath = e.path;
+                                    counter++;
+                                    if (imagePath == _data!.files[index].path) selectedImageIndex = counter;
+                                    return ImageGalleryImages(path: '$apiUrl/retrieve$imagePath', name: e.name);
+                                  }
+                                })
+                                .whereType<ImageGalleryImages>()
+                                .toList();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ViewImage(
+                                  images: imagePaths,
+                                  initialIndex: selectedImageIndex,
+                                ),
+                              ),
+                            );
+                          } else if (getIcon(_data!.files[index]) == Icons.movie) {
+                            final imagePath = _data!.files[index].path;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => VideoPlayerScreen(url: '$apiUrl/retrieve$imagePath'),
+                              ),
+                            );
+                          } else {
+                            //* On tap if file is neither image or video
+                          }
+                        },
+                        onLongPress: () {
+                          selectedFiles.contains(_data!.files[index])
+                              ? selectedFiles.remove(_data!.files[index])
+                              : selectedFiles.add(_data!.files[index]);
+                          if (selectedFiles.isEmpty) {
+                            _setSelectMode(false);
+                          } else {
+                            _setSelectMode(true);
+                          }
+                        },
                       );
                     } else {
-                      //* On tap if file is neither image or video
+                      return const SizedBox(height: 80);
                     }
                   },
-                  onLongPress: () {
-                    selectedFiles.contains(_data!.files[index])
-                        ? selectedFiles.remove(_data!.files[index])
-                        : selectedFiles.add(_data!.files[index]);
-                    if (selectedFiles.isEmpty) {
-                      _setSelectMode(false);
-                    } else {
-                      _setSelectMode(true);
-                    }
-                  },
-                );
-              } else {
-                return const SizedBox(height: 80);
-              }
-            },
-          );
-        } else {
-          return const Center(
-            child: Text(
-              'No files here',
-              style: TextStyle(fontSize: 18),
+                ),
+              ),
             ),
-          );
-        }
+            AnimatedOpacity(
+              opacity: connectionDone ? 0 : 1,
+              duration: const Duration(milliseconds: 150),
+              child: FutureBuilder(
+                future: Future.delayed(const Duration(milliseconds: 100)),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.done) {
+                    return Center(
+                      child: CircularProgressIndicator(
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                    );
+                  } else {
+                    return Container();
+                  }
+                },
+              ),
+            )
+          ],
+        );
       } else {
-        return const Center(child: Text('Something went wrong'));
+        return const Center(
+          child: Text(
+            'No files here',
+            style: TextStyle(fontSize: 18),
+          ),
+        );
       }
     } else {
-      //* Staggered loading if loading takes less than 100ms
-      return FutureBuilder(
-        future: Future.delayed(const Duration(milliseconds: 100)),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            return Center(
-              child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.secondary,
-              ),
-            );
-          } else {
-            return Container();
-          }
-        },
+      return Center(
+        child: CircularProgressIndicator(
+          color: Theme.of(context).colorScheme.secondary,
+        ),
       );
     }
   }
@@ -371,16 +387,12 @@ class _MainPageState extends State<MainPage> {
       child: Scaffold(
         appBar: _loadAppBar(scaffoldKey),
         drawer: prefs != null ? CustomDrawer(storage: storage, prefs: prefs!, fileTreeData: _fileTreeData) : null,
-        body: AnimatedOpacity(
-          opacity: connectionDone ? 1 : 0,
-          duration: const Duration(milliseconds: 200),
-          child: _loadUI(scaffoldKey),
-        ),
+        body: _loadUI(scaffoldKey),
         floatingActionButton: selectMode
             ? null
             : FloatingActionButton(
                 onPressed: () {
-                  if (prefs!.getString('userdata') != null) {
+                  if (prefs!.getString('userdata') != null && _data != null && connectionDone) {
                     showModalBottomSheet(
                       context: context,
                       builder: (context) {
