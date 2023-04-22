@@ -178,7 +178,7 @@ class _MainPageState extends State<MainPage> {
             onPressed: () {
               selectedFiles = [..._data!.files];
               setState(() {});
-              _showSnackbar(scaffoldKey, 'All items selected');
+              showSnackbar(scaffoldKey, 'All items selected');
             },
             icon: const Icon(Icons.select_all),
           ),
@@ -256,11 +256,26 @@ class _MainPageState extends State<MainPage> {
                       _transitionDirectory(_data!.files[index].path);
                     } else if (getIcon(_data!.files[index]) == Icons.image) {
                       //TODO: Improve these
-                      final imagePath = _data!.files[index].path;
+                      int counter = -1;
+                      int selectedImageIndex = 0;
+                      final imagePaths = _data!.files
+                          .map((e) {
+                            if (getIcon(e) == Icons.image) {
+                              final imagePath = e.path;
+                              counter++;
+                              if (imagePath == _data!.files[index].path) selectedImageIndex = counter;
+                              return ImageGalleryImages(path: '$apiUrl/retrieve$imagePath', name: e.name);
+                            }
+                          })
+                          .whereType<ImageGalleryImages>()
+                          .toList();
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ViewImage(url: '$apiUrl/retrieve$imagePath'),
+                          builder: (context) => ViewImage(
+                            images: imagePaths,
+                            initialIndex: selectedImageIndex,
+                          ),
                         ),
                       );
                     } else if (getIcon(_data!.files[index]) == Icons.movie) {
@@ -397,7 +412,7 @@ class _MainPageState extends State<MainPage> {
                       },
                     );
                   } else {
-                    _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
+                    showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
                   }
                 },
                 child: const Icon(Icons.add),
@@ -477,7 +492,7 @@ class _MainPageState extends State<MainPage> {
         RichClipboard.setData(RichClipboardData(
           text: Uri.parse(fileUrl).toString(),
           //html: '{"action": "copy", "files": [$fileUrl]}', //TODO: Meant for copying files in app, rn copy parsed link
-        )).then((_) => _showSnackbar(scaffoldKey, 'Copied link to clipboard'));
+        )).then((_) => showSnackbar(scaffoldKey, 'Copied link to clipboard'));
         break;
       case ContextMenuItems.rename:
         _renameFile(filePath, scaffoldKey);
@@ -542,14 +557,14 @@ class _MainPageState extends State<MainPage> {
                         headers: {"cookie": "token=$token;", "content-type": "application/json"},
                       ).then((value) {
                         if (value.statusCode == 200) {
-                          _showSnackbar(scaffoldKey, 'Renamed file');
+                          showSnackbar(scaffoldKey, 'Renamed file');
                         } else {
-                          _showSnackbar(
+                          showSnackbar(
                               scaffoldKey, 'Something went wrong, try logging in again', SnackbarStatus.warning);
                         }
                       });
                     } else {
-                      _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
+                      showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
                     }
                     Navigator.pop(context);
                   });
@@ -597,14 +612,14 @@ class _MainPageState extends State<MainPage> {
                         headers: {"cookie": "token=$token;", "content-type": "application/json"},
                       ).then((response) {
                         if (response.statusCode == 200) {
-                          _showSnackbar(scaffoldKey, 'File(s) deleted');
+                          showSnackbar(scaffoldKey, 'File(s) deleted');
                         } else {
-                          _showSnackbar(
+                          showSnackbar(
                               scaffoldKey, 'Something went wrong, try logging in again', SnackbarStatus.warning);
                         }
                       });
                     } else {
-                      _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
+                      showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
                     }
                   });
                   setState(() {
@@ -649,12 +664,12 @@ class _MainPageState extends State<MainPage> {
           request.headers["cookie"] = "token=$token;";
           final response = await request.send();
           if (response.statusCode == 200) {
-            _showSnackbar(scaffoldKey, 'File(s) uploaded');
+            showSnackbar(scaffoldKey, 'File(s) uploaded');
           } else {
-            _showSnackbar(scaffoldKey, 'Something went wrong, try logging in again', SnackbarStatus.warning);
+            showSnackbar(scaffoldKey, 'Something went wrong, try logging in again', SnackbarStatus.warning);
           }
         } else {
-          _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
+          showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
         }
         if (context.mounted) Navigator.pop(context);
       }
@@ -714,14 +729,14 @@ class _MainPageState extends State<MainPage> {
                         headers: {"cookie": "token=$token;", "content-type": "application/json"},
                       ).then((value) {
                         if (value.statusCode == 201) {
-                          _showSnackbar(scaffoldKey, 'Created new folder');
+                          showSnackbar(scaffoldKey, 'Created new folder');
                         } else {
-                          _showSnackbar(
+                          showSnackbar(
                               scaffoldKey, 'Something went wrong, try logging in again', SnackbarStatus.warning);
                         }
                       });
                     } else {
-                      _showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
+                      showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
                     }
                     Navigator.pop(context);
                   });
@@ -736,25 +751,5 @@ class _MainPageState extends State<MainPage> {
         );
       },
     );
-  }
-
-  //* Utility functions
-  void _showSnackbar(GlobalKey<ScaffoldMessengerState> scaffoldKey, String message, [SnackbarStatus? status]) {
-    Color snackbarBackground;
-    switch (status) {
-      case SnackbarStatus.warning:
-        snackbarBackground = Colors.red;
-        break;
-      default:
-        snackbarBackground = Colors.white;
-    }
-
-    final snackBar = SnackBar(
-      content: Text(message),
-      backgroundColor: snackbarBackground,
-    );
-
-    scaffoldKey.currentState!.clearSnackBars();
-    scaffoldKey.currentState!.showSnackBar(snackBar);
   }
 }

@@ -44,7 +44,37 @@ class ApiListResponseList {
   }
 }
 
+class ImageGalleryImages {
+  final String path;
+  final String name;
+
+  const ImageGalleryImages({
+    required this.path,
+    required this.name,
+  });
+}
+
 enum SnackbarStatus { warning }
+
+//* Utility functions
+void showSnackbar(GlobalKey<ScaffoldMessengerState> scaffoldKey, String message, [SnackbarStatus? status]) {
+  Color snackbarBackground;
+  switch (status) {
+    case SnackbarStatus.warning:
+      snackbarBackground = Colors.red;
+      break;
+    default:
+      snackbarBackground = Colors.white;
+  }
+
+  final snackBar = SnackBar(
+    content: Text(message),
+    backgroundColor: snackbarBackground,
+  );
+
+  scaffoldKey.currentState!.clearSnackBars();
+  scaffoldKey.currentState!.showSnackBar(snackBar);
+}
 
 IconData? getIcon(ApiListResponse file) {
   if (file.isDirectory) return Icons.folder;

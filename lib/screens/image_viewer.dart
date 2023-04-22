@@ -1,22 +1,41 @@
 import 'package:flutter/material.dart';
-import 'package:photo_view/photo_view.dart';
 import 'package:flutter/services.dart';
+import 'package:photo_view/photo_view.dart';
+import 'package:photo_view/photo_view_gallery.dart';
+import 'package:provider/provider.dart';
+
+import 'package:file_server_mobile/types.dart';
+import 'package:file_server_mobile/app_data.dart';
 
 class ViewImage extends StatefulWidget {
-  const ViewImage({super.key, required this.url});
+  ViewImage({
+    super.key,
+    required this.images,
+    required this.initialIndex,
+  }) : pageController = PageController(initialPage: initialIndex);
 
-  final String url;
+  final List<ImageGalleryImages> images;
+  final int initialIndex;
+  final PageController pageController;
 
   @override
   State<ViewImage> createState() => ViewImageState();
 }
 
-//TODO: Safe area
 class ViewImageState extends State<ViewImage> {
   bool _hideBackButton = false;
+  late int currentIndex = widget.initialIndex;
+
+  void onPageChanged(int index) {
+    setState(() {
+      currentIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final scaffoldKey = Provider.of<AppData>(context).scaffoldMessengerKey;
+
     return AnnotatedRegion(
       value: const SystemUiOverlayStyle(statusBarColor: Colors.black),
       child: Scaffold(
@@ -37,11 +56,36 @@ class ViewImageState extends State<ViewImage> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                PhotoView(
-                    minScale: PhotoViewComputedScale.contained,
-                    maxScale: PhotoViewComputedScale.contained * 50,
-                    initialScale: PhotoViewComputedScale.contained,
-                    imageProvider: NetworkImage(widget.url)),
+                PhotoViewGallery.builder(
+                  itemCount: widget.images.length,
+                  scrollPhysics: const BouncingScrollPhysics(),
+                  pageController: widget.pageController,
+                  onPageChanged: onPageChanged,
+                  builder: (context, index) {
+                    return PhotoViewGalleryPageOptions(
+                      imageProvider: NetworkImage(widget.images[index].path),
+                      initialScale: PhotoViewComputedScale.contained,
+                      minScale: PhotoViewComputedScale.contained,
+                      maxScale: PhotoViewComputedScale.contained * 50,
+                      heroAttributes: PhotoViewHeroAttributes(tag: widget.images[index].path),
+                    );
+                  },
+                  loadingBuilder: (context, event) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 64),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        LinearProgressIndicator(
+                          value:
+                              event == null ? 0 : event.cumulativeBytesLoaded / (event.expectedTotalBytes ?? 1).toInt(),
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                        const SizedBox(height: 20),
+                        const Text('Loading...'),
+                      ],
+                    ),
+                  ),
+                ),
                 IgnorePointer(
                   ignoring: true,
                   child: AnimatedOpacity(
@@ -63,14 +107,44 @@ class ViewImageState extends State<ViewImage> {
                   child: Align(
                     alignment: Alignment.topLeft,
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: IconButton(
-                        splashRadius: 24,
-                        onPressed: () => _hideBackButton ? null : Navigator.pop(context),
-                        icon: const Icon(
-                          Icons.arrow_back,
-                          color: Colors.white,
-                        ),
+                      padding: const EdgeInsets.all(8),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            splashRadius: 24,
+                            onPressed: () => _hideBackButton ? null : Navigator.pop(context),
+                            icon: const Icon(
+                              Icons.arrow_back,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Text(
+                            widget.images[currentIndex].name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const Expanded(child: SizedBox()),
+                          PopupMenuButton(
+                            onSelected: (value) {
+                              switch (value) {
+                                case 'copy':
+                                  Clipboard.setData(ClipboardData(
+                                    text: Uri.parse(widget.images[currentIndex].path).toString(),
+                                    //html: '{"action": "copy", "files": [$fileUrl]}', //TODO: Meant for copying files in app, rn copy parsed link
+                                  )).then((_) => showSnackbar(scaffoldKey, 'Copied link to clipboard'));
+                                  break;
+                                default:
+                              }
+                            },
+                            splashRadius: 24,
+                            itemBuilder: (BuildContext context) => [
+                              const PopupMenuItem(
+                                value: 'copy',
+                                child: Text("Copy link"),
+                              ),
+                            ],
+                          )
+                        ],
                       ),
                     ),
                   ),
