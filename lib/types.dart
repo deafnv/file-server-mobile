@@ -1,4 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
+
+import 'package:file_server_mobile/main.dart';
 
 class ApiListResponse {
   final String name;
@@ -60,6 +66,38 @@ void showSnackbar(GlobalKey<ScaffoldMessengerState> scaffoldKey, String message,
   scaffoldKey.currentState!.showSnackBar(snackBar);
 }
 
+class MultipartRequest extends http.MultipartRequest {
+  /// Creates a new [MultipartRequest].
+  MultipartRequest(
+    String method,
+    Uri url, {
+    this.onProgress,
+  }) : super(method, url);
+
+  final void Function(int bytes, int totalBytes)? onProgress;
+
+  @override
+  http.ByteStream finalize() {
+    final byteStream = super.finalize();
+    if (onProgress == null) return byteStream;
+
+    final total = contentLength;
+    int bytes = 0;
+
+    final t = StreamTransformer.fromHandlers(
+      handleData: (List<int> data, EventSink<List<int>> sink) {
+        bytes += data.length;
+        onProgress!(bytes, total);
+        if (total >= bytes) {
+          sink.add(data);
+        }
+      },
+    );
+    final stream = byteStream.transform(t);
+    return http.ByteStream(stream);
+  }
+}
+
 IconData? getIcon(ApiListResponse file) {
   if (file.isDirectory) return Icons.folder;
   final splitName = file.name.split('.');
@@ -76,4 +114,41 @@ IconData? getIcon(ApiListResponse file) {
   if (['ass', 'srt', 'vtt'].contains(extension)) return Icons.closed_caption;
   if (['exe'].contains(extension)) return Icons.terminal;
   return Icons.insert_drive_file;
+}
+
+Future<void> showProgress(
+  String title,
+  String body, {
+  double? progress,
+}) async {
+  final AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
+    'upload',
+    'Uploads',
+    'Upload progress notifications',
+    importance: Importance.max,
+    priority: Priority.high,
+    ticker: 'ticker',
+    showProgress: progress != null,
+    maxProgress: 1,
+    progress: progress?.toInt() ?? 0,
+  );
+
+  final NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+
+  await flutterLocalNotificationsPlugin.show(
+    0,
+    title,
+    body,
+    platformChannelSpecifics,
+  );
+}
+
+Future<void> showNotification(String title, String body) async {
+  const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      'general', 'General', 'General notifications',
+      importance: Importance.max, priority: Priority.high, ticker: 'ticker');
+
+  const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+
+  await flutterLocalNotificationsPlugin.show(0, title, body, platformChannelSpecifics);
 }

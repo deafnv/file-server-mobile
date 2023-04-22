@@ -4,10 +4,13 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 
 import 'app_data.dart';
 import 'screens/files.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 class DownloadClass {
   @pragma('vm:entry-point')
@@ -18,6 +21,13 @@ class DownloadClass {
 }
 
 Future main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  const AndroidInitializationSettings androidInitializationSettings = AndroidInitializationSettings('launch_image');
+  const IOSInitializationSettings iosInitializationSettings = IOSInitializationSettings();
+  const InitializationSettings initializationSettings =
+      InitializationSettings(android: androidInitializationSettings, iOS: iosInitializationSettings);
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
   await dotenv.load(fileName: ".env");
   await FlutterDownloader.initialize(
     debug: true,

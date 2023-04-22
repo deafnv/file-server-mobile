@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
@@ -309,6 +310,7 @@ class _MainPageState extends State<MainPage> {
                             );
                           } else {
                             //* On tap if file is neither image or video
+                            showNotification('Notification Title', 'Notification Body');
                           }
                         },
                         onLongPress: () {
@@ -698,8 +700,15 @@ class _MainPageState extends State<MainPage> {
           List<File> files = result.paths.map((path) => File(path!)).toList();
           final pathDir = currentDir != null ? currentDir! : '/';
           final url = Uri.parse('$apiUrl/upload$pathDir');
-          //TODO: Keep track of upload progress
-          final request = http.MultipartRequest('POST', url);
+
+          final request = MultipartRequest(
+            'POST',
+            url,
+            onProgress: (int bytes, int total) {
+              final progress = bytes / total;
+              print(progress);
+            },
+          );
           for (int i = 0; i < files.length; i++) {
             request.files.add(await http.MultipartFile.fromPath('upload-file', files[i].path));
           }
@@ -792,5 +801,36 @@ class _MainPageState extends State<MainPage> {
         );
       },
     );
+  }
+}
+
+class MultipartRequest extends http.MultipartRequest {
+  MultipartRequest(
+    String method,
+    Uri url, {
+    this.onProgress,
+  }) : super(method, url);
+
+  final void Function(int bytes, int totalBytes)? onProgress;
+
+  @override
+  http.ByteStream finalize() {
+    final byteStream = super.finalize();
+    if (onProgress == null) return byteStream;
+
+    final total = contentLength;
+    int bytes = 0;
+
+    final t = StreamTransformer.fromHandlers(
+      handleData: (List<int> data, EventSink<List<int>> sink) {
+        bytes += data.length;
+        onProgress!(bytes, total);
+        if (total >= bytes) {
+          sink.add(data);
+        }
+      },
+    );
+    final stream = byteStream.transform(t);
+    return http.ByteStream(stream);
   }
 }
