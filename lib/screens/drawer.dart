@@ -81,6 +81,9 @@ class _CustomDrawerState extends State<CustomDrawer> {
           jsonDecode(userDataString)?["user"],
           style: const TextStyle(fontSize: 20),
         ),
+        const SizedBox(
+          height: 36,
+        ),
         ElevatedButton(
           onPressed: () async {
             await widget.prefs.remove('userdata');

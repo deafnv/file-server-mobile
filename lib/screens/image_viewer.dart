@@ -125,6 +125,7 @@ class ViewImageState extends State<ViewImage> {
                           ),
                           const Expanded(child: SizedBox()),
                           PopupMenuButton(
+                            enabled: !_hideBackButton,
                             onSelected: (value) {
                               switch (value) {
                                 case 'copy':

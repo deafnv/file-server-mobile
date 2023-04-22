@@ -153,17 +153,19 @@ class _MainPageState extends State<MainPage> {
           IconButton(
             tooltip: 'Move',
             splashRadius: 24,
-            onPressed: () => Navigator.pushReplacement(
-              context,
-              PageTransition(
-                type: PageTransitionType.leftToRight,
-                child: MoveSelect(
-                  currentDir: currentDir,
-                  storage: storage,
-                  filesToMove: selectedFiles.map((e) => e.path).toList(),
-                ),
-              ),
-            ),
+            onPressed: () => prefs?.getString('userdata') != null
+                ? Navigator.pushReplacement(
+                    context,
+                    PageTransition(
+                      type: PageTransitionType.leftToRight,
+                      child: MoveSelect(
+                        currentDir: currentDir,
+                        storage: storage,
+                        filesToMove: selectedFiles.map((e) => e.path).toList(),
+                      ),
+                    ),
+                  )
+                : showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning),
             icon: const Icon(Icons.drive_file_move_outlined),
           ),
           IconButton(
