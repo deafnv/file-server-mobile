@@ -126,15 +126,27 @@ class _MainPageState extends State<MainPage> {
 
   //! Remove later
   void _download(String url) async {
-    /* final externalDir = await getExternalStorageDirectory(); */
+    Directory? directory;
+    try {
+      if (Platform.isIOS) {
+        directory = await getApplicationDocumentsDirectory();
+      } else {
+        directory = Directory('/storage/emulated/0/Download');
+        if (!await directory.exists()) directory = await getExternalStorageDirectory();
+      }
+    } catch (err) {
+      throw ("Cannot get download folder path");
+    }
 
-    /* final id =  */ await FlutterDownloader.enqueue(
-      url: url,
-      savedDir: '/storage/emulated/0/Download', //TODO: change this to platform specific
-      showNotification: true,
-      openFileFromNotification: true,
-      saveInPublicStorage: true,
-    );
+    if (directory != null) {
+      await FlutterDownloader.enqueue(
+        url: url,
+        savedDir: directory.path,
+        showNotification: true,
+        openFileFromNotification: true,
+        saveInPublicStorage: true,
+      );
+    }
   }
 
   _loadAppBar(GlobalKey<ScaffoldMessengerState> scaffoldKey) {
@@ -288,6 +300,8 @@ class _MainPageState extends State<MainPage> {
                           builder: (context) => VideoPlayerScreen(url: '$apiUrl/retrieve$imagePath'),
                         ),
                       );
+                    } else {
+                      //* On tap if file is neither image or video
                     }
                   },
                   onLongPress: () {
@@ -318,11 +332,20 @@ class _MainPageState extends State<MainPage> {
         return const Center(child: Text('Something went wrong'));
       }
     } else {
-      //TODO: Delay showing indicator if data loads fast
-      return Center(
-        child: CircularProgressIndicator(
-          color: Theme.of(context).colorScheme.secondary,
-        ),
+      //* Staggered loading if loading takes less than 100ms
+      return FutureBuilder(
+        future: Future.delayed(const Duration(milliseconds: 100)),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return Center(
+              child: CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.secondary,
+              ),
+            );
+          } else {
+            return Container();
+          }
+        },
       );
     }
   }
@@ -348,7 +371,11 @@ class _MainPageState extends State<MainPage> {
       child: Scaffold(
         appBar: _loadAppBar(scaffoldKey),
         drawer: prefs != null ? CustomDrawer(storage: storage, prefs: prefs!, fileTreeData: _fileTreeData) : null,
-        body: _loadUI(scaffoldKey),
+        body: AnimatedOpacity(
+          opacity: connectionDone ? 1 : 0,
+          duration: const Duration(milliseconds: 200),
+          child: _loadUI(scaffoldKey),
+        ),
         floatingActionButton: selectMode
             ? null
             : FloatingActionButton(
@@ -511,7 +538,7 @@ class _MainPageState extends State<MainPage> {
 
   //* State changing interactions
   void _renameFile(String filePath, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
-    final newFileNameController = TextEditingController();
+    final newFileNameController = TextEditingController(text: p.basename(filePath));
     final textFieldBorderStyle = OutlineInputBorder(
       borderSide: BorderSide(width: 2, color: Theme.of(context).colorScheme.secondary),
     );
@@ -685,7 +712,6 @@ class _MainPageState extends State<MainPage> {
     );
     Navigator.pop(context);
 
-    //TODO: Add default folder name
     showDialog(
       context: context,
       builder: (context) {
