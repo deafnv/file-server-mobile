@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
+import 'package:file_server_mobile/screens/audio_player.dart';
 import 'package:file_server_mobile/screens/move_select.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -304,16 +305,24 @@ class _MainPageState extends State<MainPage> {
                               ),
                             );
                           } else if (getIcon(_data![index]) == Icons.movie) {
-                            final imagePath = _data![index].path;
+                            final videoPath = _data![index].path;
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => VideoPlayerScreen(url: '$apiUrl/retrieve$imagePath'),
+                                builder: (context) => VideoPlayerScreen(url: '$apiUrl/retrieve$videoPath'),
                               ),
                             );
                           } else {
                             //* On tap if file is neither image or video
-                            showNotification('Notification Title', 'Notification Body');
+                            final audioPath = _data![index].path;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AudioPlayerScreen(
+                                  audio: AudioFile(url: '$apiUrl/retrieve$audioPath', name: _data![index].name),
+                                ),
+                              ),
+                            );
                           }
                         },
                         onLongPress: () {

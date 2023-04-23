@@ -44,6 +44,16 @@ class ImageGalleryImages {
   });
 }
 
+class AudioFile {
+  final String url;
+  final String name;
+
+  const AudioFile({
+    required this.url,
+    required this.name,
+  });
+}
+
 enum SnackbarStatus { warning }
 
 //* Utility functions

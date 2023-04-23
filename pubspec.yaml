@@ -54,6 +54,7 @@ dependencies:
   page_transition: ^2.0.9
   chewie: ^1.4.0
   flutter_local_notifications: ^8.2.0
+  just_audio: ^0.9.32
 
 dev_dependencies:
   flutter_launcher_icons: "^0.13.0"
