@@ -48,6 +48,9 @@ class _MainPageState extends State<MainPage> {
   bool connectionDone = false;
   bool connectionDoneFileTree = false;
 
+  StateSetter? _setUploadProgress;
+  double uploadProgress = 0;
+
   bool selectMode = false;
   List<ApiListResponse> selectedFiles = [];
 
@@ -701,18 +704,26 @@ class _MainPageState extends State<MainPage> {
           final pathDir = currentDir != null ? currentDir! : '/';
           final url = Uri.parse('$apiUrl/upload$pathDir');
 
+          final String fileName =
+              files.length > 1 ? files.length.toString() : File(files[0].path).uri.pathSegments.last;
           final request = MultipartRequest(
             'POST',
             url,
-            onProgress: (int bytes, int total) {
-              final progress = bytes / total;
-              print(progress);
+            onProgress: (int bytes, int total) async {
+              uploadProgress = bytes / total * 100;
+              await showProgress(
+                'Upload',
+                files.length > 1 ? 'Uploading $fileName files...' : 'Uploading $fileName...',
+                uploadProgress,
+              );
             },
           );
           for (int i = 0; i < files.length; i++) {
             request.files.add(await http.MultipartFile.fromPath('upload-file', files[i].path));
           }
           request.headers["cookie"] = "token=$token;";
+          if (context.mounted) Navigator.pop(context);
+          showSnackbar(scaffoldKey, 'Upload started');
           final response = await request.send();
           if (response.statusCode == 200) {
             showSnackbar(scaffoldKey, 'File(s) uploaded');
@@ -722,7 +733,6 @@ class _MainPageState extends State<MainPage> {
         } else {
           showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
         }
-        if (context.mounted) Navigator.pop(context);
       }
     }
   }

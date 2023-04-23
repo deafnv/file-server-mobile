@@ -118,26 +118,28 @@ IconData? getIcon(ApiListResponse file) {
 
 Future<void> showProgress(
   String title,
-  String body, {
-  double? progress,
-}) async {
+  String body,
+  double progress,
+) async {
   final AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
     'upload',
     'Uploads',
     'Upload progress notifications',
-    importance: Importance.max,
+    importance: Importance.low,
     priority: Priority.high,
     ticker: 'ticker',
-    showProgress: progress != null,
-    maxProgress: 1,
-    progress: progress?.toInt() ?? 0,
+    showProgress: true,
+    maxProgress: 100,
+    enableVibration: false,
+    progress: progress.toInt(),
   );
 
   final NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+  final progressText = progress.toStringAsFixed(1);
 
   await flutterLocalNotificationsPlugin.show(
     0,
-    title,
+    '$title $progressText%',
     body,
     platformChannelSpecifics,
   );
