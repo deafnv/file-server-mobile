@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:provider/provider.dart';
 
 import 'package:file_server_mobile/types.dart';
 import 'package:file_server_mobile/app_data.dart';
 
 class AudioPlayerScreen extends StatefulWidget {
-  const AudioPlayerScreen({super.key, required this.audio});
+  const AudioPlayerScreen({super.key, required this.audio, required this.folderName});
 
   final AudioFile audio;
+  final String folderName;
 
   @override
   State<AudioPlayerScreen> createState() => _AudioPlayerScreenState();
@@ -19,14 +21,20 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with SingleTicker
   late AudioPlayer player;
   late AnimationController _controller;
   bool playerReady = false;
-  String totalDuration = '';
 
   @override
   void initState() {
     super.initState();
     player = AudioPlayer();
-    player.setUrl(widget.audio.url).then((_) {
-      totalDuration = formattedTime(timeInSecond: player.duration?.inSeconds ?? 0);
+    final source = AudioSource.uri(
+      Uri.parse(widget.audio.url),
+      tag: MediaItem(
+        id: widget.audio.url,
+        album: widget.folderName,
+        title: widget.audio.name,
+      ),
+    );
+    player.setAudioSource(source).then((_) {
       playerReady = true;
       setState(() {});
     });
@@ -83,6 +91,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with SingleTicker
               builder: (context, AsyncSnapshot<Duration> snapshot) {
                 final position = snapshot.data ?? Duration.zero;
                 final currentDuration = formattedTime(timeInSecond: position.inSeconds);
+                final totalDuration = formattedTime(timeInSecond: player.duration?.inSeconds ?? 0);
                 return Column(
                   children: [
                     SliderTheme(

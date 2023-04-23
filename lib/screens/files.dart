@@ -320,6 +320,7 @@ class _MainPageState extends State<MainPage> {
                               MaterialPageRoute(
                                 builder: (context) => AudioPlayerScreen(
                                   audio: AudioFile(url: '$apiUrl/retrieve$audioPath', name: _data![index].name),
+                                  folderName: p.basename(p.dirname(_data![index].path)),
                                 ),
                               ),
                             );

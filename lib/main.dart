@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
 import 'app_data.dart';
 import 'screens/files.dart';
@@ -33,6 +34,13 @@ Future main() async {
     debug: true,
   );
   FlutterDownloader.registerCallback(DownloadClass.downloadCallback);
+
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
+    androidNotificationChannelName: 'Audio Playback',
+    androidNotificationChannelDescription: 'Audio controls in notification',
+    androidNotificationOngoing: true,
+  );
 
   runApp(
     ChangeNotifierProvider(
