@@ -119,11 +119,12 @@ class ViewImageState extends State<ViewImage> {
                             ),
                           ),
                           const SizedBox(width: 16),
-                          Text(
-                            widget.images[currentIndex].name,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          Expanded(
+                            child: Text(
+                              widget.images[currentIndex].name,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
-                          const Expanded(child: SizedBox()),
                           PopupMenuButton(
                             enabled: !_hideBackButton,
                             onSelected: (value) {
