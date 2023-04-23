@@ -314,12 +314,25 @@ class _MainPageState extends State<MainPage> {
                             );
                           } else {
                             //* On tap if file is neither image or video
-                            final audioPath = _data![index].path;
+                            int counter = -1;
+                            int selectedAudioIndex = 0;
+                            final audioPaths = _data!
+                                .map((e) {
+                                  if (getIcon(e) == Icons.audio_file) {
+                                    final audioPath = e.path;
+                                    counter++;
+                                    if (audioPath == _data![index].path) selectedAudioIndex = counter;
+                                    return AudioFile(url: '$apiUrl/retrieve$audioPath', name: e.name);
+                                  }
+                                })
+                                .whereType<AudioFile>()
+                                .toList();
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => AudioPlayerScreen(
-                                  audio: AudioFile(url: '$apiUrl/retrieve$audioPath', name: _data![index].name),
+                                  audios: audioPaths,
+                                  initialIndex: selectedAudioIndex,
                                   folderName: p.basename(p.dirname(_data![index].path)),
                                 ),
                               ),

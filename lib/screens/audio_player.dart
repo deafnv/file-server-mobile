@@ -1,3 +1,4 @@
+import 'package:file_server_mobile/screens/files.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
@@ -6,11 +7,13 @@ import 'package:provider/provider.dart';
 
 import 'package:file_server_mobile/types.dart';
 import 'package:file_server_mobile/app_data.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AudioPlayerScreen extends StatefulWidget {
-  const AudioPlayerScreen({super.key, required this.audio, required this.folderName});
+  const AudioPlayerScreen({super.key, required this.audios, required this.initialIndex, required this.folderName});
 
-  final AudioFile audio;
+  final List<AudioFile> audios;
+  final int initialIndex;
   final String folderName;
 
   @override
@@ -26,15 +29,31 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with SingleTicker
   void initState() {
     super.initState();
     player = AudioPlayer();
-    final source = AudioSource.uri(
-      Uri.parse(widget.audio.url),
-      tag: MediaItem(
-        id: widget.audio.url,
-        album: widget.folderName,
-        title: widget.audio.name,
-      ),
+
+    player.currentIndexStream.listen((index) {
+      setState(() {});
+    });
+
+    // Define the playlist
+    final playlist = ConcatenatingAudioSource(
+      // Start loading next item just before reaching it
+      useLazyPreparation: true,
+      // Customise the shuffle algorithm
+      shuffleOrder: DefaultShuffleOrder(),
+      // Specify the playlist items
+      children: widget.audios
+          .map((e) => AudioSource.uri(
+                Uri.parse(e.url),
+                tag: MediaItem(
+                  id: e.url,
+                  album: widget.folderName,
+                  title: e.name,
+                ),
+              ))
+          .toList(),
     );
-    player.setAudioSource(source).then((_) {
+
+    player.setAudioSource(playlist, initialIndex: widget.initialIndex).then((_) {
       playerReady = true;
       setState(() {});
     });
@@ -56,13 +75,21 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with SingleTicker
       appBar: AppBar(
         title: const Text('Audio Player'),
         actions: [
-          PopupMenuButton(
+          PopupMenuButton<ContextMenuItems>(
             onSelected: (value) {
               switch (value) {
-                case 'copy':
-                  Clipboard.setData(ClipboardData(
-                    text: Uri.parse(widget.audio.url).toString(),
-                  )).then((_) => showSnackbar(scaffoldKey, 'Copied link to clipboard'));
+                case ContextMenuItems.copy:
+                  if (player.currentIndex != null) {
+                    Clipboard.setData(ClipboardData(
+                      text: Uri.parse(widget.audios[player.currentIndex!].url).toString(),
+                    )).then((_) => showSnackbar(scaffoldKey, 'Copied link to clipboard'));
+                  }
+                  break;
+                case ContextMenuItems.openinbrowser:
+                  final uri = Uri.parse(widget.audios[player.currentIndex!].url);
+                  canLaunchUrl(uri)
+                      .then((_) => launchUrl(uri, mode: LaunchMode.externalApplication))
+                      .catchError((_) => throw 'Could not launch $uri');
                   break;
                 default:
               }
@@ -70,8 +97,12 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with SingleTicker
             splashRadius: 24,
             itemBuilder: (BuildContext context) => [
               const PopupMenuItem(
-                value: 'copy',
+                value: ContextMenuItems.copy,
                 child: Text("Copy link"),
+              ),
+              const PopupMenuItem(
+                value: ContextMenuItems.openinbrowser,
+                child: Text("Open in browser"),
               ),
             ],
           )
@@ -81,9 +112,13 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with SingleTicker
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              widget.audio.name,
-              style: const TextStyle(fontSize: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                player.currentIndex != null ? widget.audios[player.currentIndex!].name : '',
+                style: const TextStyle(fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
             ),
             const SizedBox(height: 20),
             StreamBuilder(
@@ -115,14 +150,34 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with SingleTicker
                 );
               },
             ),
-            IconButton(
-              iconSize: 28,
-              splashRadius: 28,
-              onPressed: !playerReady ? null : () => _playPause(),
-              icon: AnimatedIcon(
-                progress: _controller,
-                icon: AnimatedIcons.play_pause,
-              ),
+            const SizedBox(height: 24),
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              children: [
+                IconButton(
+                  iconSize: 28,
+                  splashRadius: 28,
+                  onPressed: () async => await player.seekToPrevious(),
+                  icon: const Icon(Icons.skip_previous),
+                ),
+                IconButton(
+                  iconSize: 36,
+                  splashRadius: 36,
+                  onPressed: !playerReady ? null : () => _playPause(),
+                  icon: AnimatedIcon(
+                    progress: _controller,
+                    icon: AnimatedIcons.play_pause,
+                  ),
+                ),
+                IconButton(
+                  iconSize: 28,
+                  splashRadius: 28,
+                  onPressed: () async => await player.seekToNext(),
+                  icon: const Icon(Icons.skip_next),
+                ),
+              ],
             ),
           ],
         ),
