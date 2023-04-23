@@ -71,7 +71,7 @@ class _MainPageState extends State<MainPage> {
     setState(() {});
   }
 
-  _handleSocketEvent(dynamic data) => _refreshData();
+  _handleSocketEvent(dynamic data) => _refreshData(socketUpdate: true);
   _handleFileTreeEvent(dynamic data) => _refreshFileTree();
 
   @override
@@ -475,10 +475,12 @@ class _MainPageState extends State<MainPage> {
     socket.on(currentDir != null ? currentDir! : '/', _handleSocketEvent);
   }
 
-  Future<void> _refreshData() async {
-    setState(() {
-      connectionDone = false;
-    });
+  Future<void> _refreshData({bool? socketUpdate}) async {
+    if (socketUpdate == null || !socketUpdate) {
+      setState(() {
+        connectionDone = false;
+      });
+    }
     final newData = await _fetchData(); // fetch new data from the API
     setState(() {
       _data = newData; // update the separate state variable with the new data
