@@ -4,7 +4,9 @@ App meant to be use with [file-server-api](https://github.com/deafnv/file-server
 
 ## Build
 
-Replace host with your server domain in `android/app/src/main/AndroidManifest_template.xml`, and rename to `AndroidManifest.xml`. See for details: https://developer.android.com/guide/topics/manifest/queries-element
+- Make `.env` file with `API-URL`. See `.env-template`.
+
+- Replace host with your server domain in `android/app/src/main/AndroidManifest_template.xml`, and rename to `AndroidManifest.xml`. See for details: https://developer.android.com/guide/topics/manifest/queries-element
 
 ```xml
 <queries>
