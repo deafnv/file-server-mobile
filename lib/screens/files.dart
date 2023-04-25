@@ -3,9 +3,8 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
-import 'package:file_server_mobile/screens/audio_player.dart';
-import 'package:file_server_mobile/screens/move_select.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:provider/provider.dart';
@@ -28,6 +27,8 @@ import 'drawer.dart';
 import './image_viewer.dart';
 import './video_player.dart';
 import 'package:file_server_mobile/app_data.dart';
+import 'package:file_server_mobile/screens/audio_player.dart';
+import 'package:file_server_mobile/screens/move_select.dart';
 
 enum ContextMenuItems { openinbrowser, copy, rename, download }
 
@@ -422,6 +423,7 @@ class _MainPageState extends State<MainPage> {
                 onPressed: () {
                   if (prefs!.getString('userdata') != null && _data != null && connectionDone) {
                     showModalBottomSheet(
+                      useSafeArea: true,
                       context: context,
                       builder: (context) {
                         return Padding(

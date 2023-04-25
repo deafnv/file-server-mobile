@@ -36,122 +36,129 @@ class ViewImageState extends State<ViewImage> {
   Widget build(BuildContext context) {
     final scaffoldKey = Provider.of<AppData>(context).scaffoldMessengerKey;
 
-    return AnnotatedRegion(
-      value: const SystemUiOverlayStyle(statusBarColor: Colors.black),
-      child: Scaffold(
-        body: SafeArea(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _hideBackButton = !_hideBackButton;
-              });
+    return WillPopScope(
+      onWillPop: () async {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+        return true;
+      },
+      child: AnnotatedRegion(
+        value: const SystemUiOverlayStyle(statusBarColor: Colors.black),
+        child: Scaffold(
+          body: SafeArea(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _hideBackButton = !_hideBackButton;
+                });
 
-              //FIXME: This is really weird
-              if (!_hideBackButton) {
-                SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-              } else {
-                SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack);
-              }
-            },
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                PhotoViewGallery.builder(
-                  itemCount: widget.images.length,
-                  scrollPhysics: const BouncingScrollPhysics(),
-                  pageController: widget.pageController,
-                  onPageChanged: onPageChanged,
-                  builder: (context, index) {
-                    return PhotoViewGalleryPageOptions(
-                      imageProvider: NetworkImage(widget.images[index].path),
-                      initialScale: PhotoViewComputedScale.contained,
-                      minScale: PhotoViewComputedScale.contained,
-                      maxScale: PhotoViewComputedScale.contained * 50,
-                      heroAttributes: PhotoViewHeroAttributes(tag: widget.images[index].path),
-                    );
-                  },
-                  loadingBuilder: (context, event) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 64),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        LinearProgressIndicator(
-                          value:
-                              event == null ? 0 : event.cumulativeBytesLoaded / (event.expectedTotalBytes ?? 1).toInt(),
-                          color: Theme.of(context).colorScheme.secondary,
-                        ),
-                        const SizedBox(height: 20),
-                        const Text('Loading...'),
-                      ],
-                    ),
-                  ),
-                ),
-                IgnorePointer(
-                  ignoring: true,
-                  child: AnimatedOpacity(
-                    opacity: _hideBackButton ? 0.0 : 1.0,
-                    duration: const Duration(milliseconds: 150),
-                    child: Container(
-                      decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.black, Colors.transparent, Colors.transparent, Colors.black],
-                              stops: [0.0, 0.15, 0.85, 1.0])),
-                    ),
-                  ),
-                ),
-                AnimatedOpacity(
-                  opacity: _hideBackButton ? 0.0 : 1.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Row(
+                //FIXME: This is really weird
+                if (!_hideBackButton) {
+                  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+                } else {
+                  SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack);
+                }
+              },
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  PhotoViewGallery.builder(
+                    itemCount: widget.images.length,
+                    scrollPhysics: const BouncingScrollPhysics(),
+                    pageController: widget.pageController,
+                    onPageChanged: onPageChanged,
+                    builder: (context, index) {
+                      return PhotoViewGalleryPageOptions(
+                        imageProvider: NetworkImage(widget.images[index].path),
+                        initialScale: PhotoViewComputedScale.contained,
+                        minScale: PhotoViewComputedScale.contained,
+                        maxScale: PhotoViewComputedScale.contained * 50,
+                        heroAttributes: PhotoViewHeroAttributes(tag: widget.images[index].path),
+                      );
+                    },
+                    loadingBuilder: (context, event) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 64),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          IconButton(
-                            splashRadius: 24,
-                            onPressed: () => _hideBackButton ? null : Navigator.pop(context),
-                            icon: const Icon(
-                              Icons.arrow_back,
-                              color: Colors.white,
-                            ),
+                          LinearProgressIndicator(
+                            value: event == null
+                                ? 0
+                                : event.cumulativeBytesLoaded / (event.expectedTotalBytes ?? 1).toInt(),
+                            color: Theme.of(context).colorScheme.secondary,
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              widget.images[currentIndex].name,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          PopupMenuButton(
-                            enabled: !_hideBackButton,
-                            onSelected: (value) {
-                              switch (value) {
-                                case 'copy':
-                                  Clipboard.setData(ClipboardData(
-                                    text: Uri.parse(widget.images[currentIndex].path).toString(),
-                                    //html: '{"action": "copy", "files": [$fileUrl]}', //TODO: Meant for copying files in app, rn copy parsed link
-                                  )).then((_) => showSnackbar(scaffoldKey, 'Copied link to clipboard'));
-                                  break;
-                                default:
-                              }
-                            },
-                            splashRadius: 24,
-                            itemBuilder: (BuildContext context) => [
-                              const PopupMenuItem(
-                                value: 'copy',
-                                child: Text("Copy link"),
-                              ),
-                            ],
-                          )
+                          const SizedBox(height: 20),
+                          const Text('Loading...'),
                         ],
                       ),
                     ),
                   ),
-                ),
-              ],
+                  IgnorePointer(
+                    ignoring: true,
+                    child: AnimatedOpacity(
+                      opacity: _hideBackButton ? 0.0 : 1.0,
+                      duration: const Duration(milliseconds: 150),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Colors.black, Colors.transparent, Colors.transparent, Colors.black],
+                                stops: [0.0, 0.15, 0.85, 1.0])),
+                      ),
+                    ),
+                  ),
+                  AnimatedOpacity(
+                    opacity: _hideBackButton ? 0.0 : 1.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              splashRadius: 24,
+                              onPressed: () => _hideBackButton ? null : Navigator.pop(context),
+                              icon: const Icon(
+                                Icons.arrow_back,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
+                                widget.images[currentIndex].name,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            PopupMenuButton(
+                              enabled: !_hideBackButton,
+                              onSelected: (value) {
+                                switch (value) {
+                                  case 'copy':
+                                    Clipboard.setData(ClipboardData(
+                                      text: Uri.parse(widget.images[currentIndex].path).toString(),
+                                      //html: '{"action": "copy", "files": [$fileUrl]}', //TODO: Meant for copying files in app, rn copy parsed link
+                                    )).then((_) => showSnackbar(scaffoldKey, 'Copied link to clipboard'));
+                                    break;
+                                  default:
+                                }
+                              },
+                              splashRadius: 24,
+                              itemBuilder: (BuildContext context) => [
+                                const PopupMenuItem(
+                                  value: 'copy',
+                                  child: Text("Copy link"),
+                                ),
+                              ],
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
