@@ -36,7 +36,7 @@ Future main() async {
   FlutterDownloader.registerCallback(DownloadClass.downloadCallback);
 
   await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
+    androidNotificationChannelId: 'audio_playback',
     androidNotificationChannelName: 'Audio Playback',
     androidNotificationChannelDescription: 'Audio controls in notification',
     androidNotificationOngoing: true,

@@ -313,8 +313,7 @@ class _MainPageState extends State<MainPage> {
                                 builder: (context) => VideoPlayerScreen(url: '$apiUrl/retrieve$videoPath'),
                               ),
                             );
-                          } else {
-                            //* On tap if file is neither image or video
+                          } else if (getIcon(_data![index]) == Icons.audio_file) {
                             int counter = -1;
                             int selectedAudioIndex = 0;
                             final audioPaths = _data!
@@ -338,6 +337,8 @@ class _MainPageState extends State<MainPage> {
                                 ),
                               ),
                             );
+                          } else {
+                            //* On tap if file is neither image or video
                           }
                         },
                         onLongPress: () {
