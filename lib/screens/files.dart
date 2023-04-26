@@ -4,7 +4,6 @@ import 'dart:isolate';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:provider/provider.dart';
@@ -22,11 +21,12 @@ import 'package:path/path.dart' as p;
 import 'package:page_transition/page_transition.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../types.dart';
-import 'drawer.dart';
-import './image_viewer.dart';
-import './video_player.dart';
+import 'package:file_server_mobile/types.dart';
 import 'package:file_server_mobile/app_data.dart';
+import 'package:file_server_mobile/widgets/delay_load.dart';
+import 'package:file_server_mobile/screens/drawer.dart';
+import 'package:file_server_mobile/screens/image_viewer.dart';
+import 'package:file_server_mobile/screens/video_player.dart';
 import 'package:file_server_mobile/screens/audio_player.dart';
 import 'package:file_server_mobile/screens/move_select.dart';
 
@@ -50,7 +50,6 @@ class _MainPageState extends State<MainPage> {
   bool connectionDone = false;
   bool connectionDoneFileTree = false;
 
-  StateSetter? _setUploadProgress;
   double uploadProgress = 0;
 
   bool selectMode = false;
@@ -362,29 +361,29 @@ class _MainPageState extends State<MainPage> {
             AnimatedOpacity(
               opacity: connectionDone ? 0 : 1,
               duration: const Duration(milliseconds: 150),
-              child: FutureBuilder(
-                future: Future.delayed(const Duration(milliseconds: 100)),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.done) {
-                    return Center(
-                      child: CircularProgressIndicator(
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                    );
-                  } else {
-                    return Container();
-                  }
-                },
-              ),
+              child: const StaggeredLoading(),
             )
           ],
         );
       } else {
-        return const Center(
-          child: Text(
-            'No files here',
-            style: TextStyle(fontSize: 18),
-          ),
+        return Stack(
+          children: [
+            AnimatedOpacity(
+              opacity: connectionDone ? 1 : 0,
+              duration: const Duration(milliseconds: 150),
+              child: const Center(
+                child: Text(
+                  'No files here',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+            ),
+            AnimatedOpacity(
+              opacity: connectionDone ? 0 : 1,
+              duration: const Duration(milliseconds: 150),
+              child: const StaggeredLoading(),
+            )
+          ],
         );
       }
     } else {
