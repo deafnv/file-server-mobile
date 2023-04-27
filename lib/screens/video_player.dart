@@ -3,9 +3,10 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
-  const VideoPlayerScreen({super.key, required this.url});
+  const VideoPlayerScreen({super.key, required this.url, required this.token});
 
   final String url;
+  final String? token;
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -18,7 +19,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.network(widget.url)
+    final token = widget.token;
+    _controller = VideoPlayerController.network(widget.url, httpHeaders: {"cookie": "token=$token;"})
       ..initialize().then((_) {
         _chewieController = ChewieController(
           videoPlayerController: _controller,

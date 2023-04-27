@@ -10,11 +10,18 @@ import 'package:file_server_mobile/app_data.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AudioPlayerScreen extends StatefulWidget {
-  const AudioPlayerScreen({super.key, required this.audios, required this.initialIndex, required this.folderName});
+  const AudioPlayerScreen({
+    super.key,
+    required this.audios,
+    required this.initialIndex,
+    required this.folderName,
+    required this.token,
+  });
 
   final List<AudioFile> audios;
   final int initialIndex;
   final String folderName;
+  final String? token;
 
   @override
   State<AudioPlayerScreen> createState() => _AudioPlayerScreenState();
@@ -34,6 +41,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with SingleTicker
       setState(() {});
     });
 
+    final token = widget.token;
     // Define the playlist
     final playlist = ConcatenatingAudioSource(
       // Start loading next item just before reaching it
@@ -42,14 +50,13 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with SingleTicker
       shuffleOrder: DefaultShuffleOrder(),
       // Specify the playlist items
       children: widget.audios
-          .map((e) => AudioSource.uri(
-                Uri.parse(e.url),
-                tag: MediaItem(
-                  id: e.url,
-                  album: widget.folderName,
-                  title: e.name,
-                ),
-              ))
+          .map((e) => AudioSource.uri(Uri.parse(e.url),
+              tag: MediaItem(
+                id: e.url,
+                album: widget.folderName,
+                title: e.name,
+              ),
+              headers: {"cookie": "token=$token;"}))
           .toList(),
     );
 

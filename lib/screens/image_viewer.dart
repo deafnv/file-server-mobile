@@ -12,11 +12,13 @@ class ViewImage extends StatefulWidget {
     super.key,
     required this.images,
     required this.initialIndex,
+    required this.token,
   }) : pageController = PageController(initialPage: initialIndex);
 
   final List<ImageGalleryImages> images;
   final int initialIndex;
   final PageController pageController;
+  final String? token;
 
   @override
   State<ViewImage> createState() => ViewImageState();
@@ -67,8 +69,9 @@ class ViewImageState extends State<ViewImage> {
                     pageController: widget.pageController,
                     onPageChanged: onPageChanged,
                     builder: (context, index) {
+                      final token = widget.token;
                       return PhotoViewGalleryPageOptions(
-                        imageProvider: NetworkImage(widget.images[index].path),
+                        imageProvider: NetworkImage(widget.images[index].path, headers: {"cookie": "token=$token;"}),
                         initialScale: PhotoViewComputedScale.contained,
                         minScale: PhotoViewComputedScale.contained,
                         maxScale: PhotoViewComputedScale.contained * 50,

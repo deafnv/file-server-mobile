@@ -12,12 +12,19 @@ import 'package:file_server_mobile/app_data.dart';
 import 'package:file_server_mobile/screens/login.dart';
 
 class CustomDrawer extends StatefulWidget {
-  const CustomDrawer({super.key, required this.storage, required this.prefs, required this.fileTreeData});
+  const CustomDrawer({
+    super.key,
+    required this.storage,
+    required this.prefs,
+    required this.fileTreeData,
+    required this.fetchFileTreeErrors,
+  });
   //TODO: Haven't passed in connectionstate for fileTreeData
 
   final FlutterSecureStorage storage;
   final SharedPreferences prefs;
   final Map<String, dynamic>? fileTreeData;
+  final String? fetchFileTreeErrors;
 
   @override
   State<CustomDrawer> createState() => _CustomDrawerState();
@@ -60,6 +67,11 @@ class _CustomDrawerState extends State<CustomDrawer> {
     //TODO: Show error if failed to load
     if (widget.fileTreeData != null) {
       return FileTreeWidget(fileTreeData: widget.fileTreeData!);
+    } else if (widget.fetchFileTreeErrors != null) {
+      //TODO: Add connectionDoneFileTree here
+      return Center(
+        child: Text(widget.fetchFileTreeErrors ?? ''),
+      );
     } else {
       return Center(
         child: CircularProgressIndicator(
@@ -88,7 +100,14 @@ class _CustomDrawerState extends State<CustomDrawer> {
           onPressed: () async {
             await widget.prefs.remove('userdata');
             await widget.storage.delete(key: 'token');
-            navigatorKey.currentState!.pop();
+            if (context.mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (BuildContext context) => const MainPage(),
+                ),
+              );
+            }
           },
           child: const Text('Logout'),
         ),

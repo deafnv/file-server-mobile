@@ -46,7 +46,9 @@ class _MainPageState extends State<MainPage> {
 
   String? currentDir;
   List<ApiListResponse>? _data;
+  String? fetchDataErrors;
   Map<String, dynamic>? _fileTreeData;
+  String? fetchFileTreeErrors;
   bool connectionDone = false;
   bool connectionDoneFileTree = false;
 
@@ -281,7 +283,6 @@ class _MainPageState extends State<MainPage> {
                           if (_data![index].isDirectory) {
                             _transitionDirectory(_data![index].path);
                           } else if (getIcon(_data![index]) == Icons.image) {
-                            //TODO: Improve these
                             int counter = -1;
                             int selectedImageIndex = 0;
                             final imagePaths = _data!
@@ -295,23 +296,29 @@ class _MainPageState extends State<MainPage> {
                                 })
                                 .whereType<ImageGalleryImages>()
                                 .toList();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ViewImage(
-                                  images: imagePaths,
-                                  initialIndex: selectedImageIndex,
-                                ),
-                              ),
-                            );
+                            storage.read(key: 'token').then(
+                                  (token) => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ViewImage(
+                                        images: imagePaths,
+                                        initialIndex: selectedImageIndex,
+                                        token: token,
+                                      ),
+                                    ),
+                                  ),
+                                );
                           } else if (getIcon(_data![index]) == Icons.movie) {
                             final videoPath = _data![index].path;
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => VideoPlayerScreen(url: '$apiUrl/retrieve$videoPath'),
-                              ),
-                            );
+                            storage.read(key: 'token').then((token) => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => VideoPlayerScreen(
+                                      url: '$apiUrl/retrieve$videoPath',
+                                      token: token,
+                                    ),
+                                  ),
+                                ));
                           } else if (getIcon(_data![index]) == Icons.audio_file) {
                             int counter = -1;
                             int selectedAudioIndex = 0;
@@ -326,16 +333,19 @@ class _MainPageState extends State<MainPage> {
                                 })
                                 .whereType<AudioFile>()
                                 .toList();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AudioPlayerScreen(
-                                  audios: audioPaths,
-                                  initialIndex: selectedAudioIndex,
-                                  folderName: p.basename(p.dirname(_data![index].path)),
-                                ),
-                              ),
-                            );
+                            storage.read(key: 'token').then(
+                                  (token) => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => AudioPlayerScreen(
+                                        audios: audioPaths,
+                                        initialIndex: selectedAudioIndex,
+                                        folderName: p.basename(p.dirname(_data![index].path)),
+                                        token: token,
+                                      ),
+                                    ),
+                                  ),
+                                );
                           } else {
                             //* On tap if file is neither image or video
                           }
@@ -386,6 +396,13 @@ class _MainPageState extends State<MainPage> {
           ],
         );
       }
+    } else if (connectionDone && fetchDataErrors != null) {
+      return Center(
+        child: Text(
+          fetchDataErrors ?? '',
+          style: const TextStyle(fontSize: 16),
+        ),
+      );
     } else {
       return Center(
         child: CircularProgressIndicator(
@@ -415,7 +432,14 @@ class _MainPageState extends State<MainPage> {
       },
       child: Scaffold(
         appBar: _loadAppBar(scaffoldKey),
-        drawer: prefs != null ? CustomDrawer(storage: storage, prefs: prefs!, fileTreeData: _fileTreeData) : null,
+        drawer: prefs != null
+            ? CustomDrawer(
+                storage: storage,
+                prefs: prefs!,
+                fileTreeData: _fileTreeData,
+                fetchFileTreeErrors: fetchFileTreeErrors,
+              )
+            : null,
         body: _loadUI(scaffoldKey),
         floatingActionButton: selectMode
             ? null
@@ -514,22 +538,31 @@ class _MainPageState extends State<MainPage> {
 
   Future<List<ApiListResponse>?> _fetchData() async {
     final pathDir = currentDir != null ? currentDir! : '/';
-    final response = await http.get(Uri.parse('$apiUrl/list$pathDir'));
-    if (response.statusCode == 200) {
-      List<ApiListResponse> parsedResponse =
-          jsonDecode(response.body).map((e) => ApiListResponse.fromJson(e)).toList().cast<ApiListResponse>();
-      parsedResponse.sort((a, b) {
-        if (a.isDirectory && b.isDirectory) return a.name.compareTo(b.name);
-        if (a.isDirectory && !b.isDirectory) return -1;
-        if (!a.isDirectory && b.isDirectory) return 1;
-        return a.name.compareTo(b.name);
-      });
-      connectionDone = true;
-      return parsedResponse;
-    } else {
-      connectionDone = true;
-      return null;
-    }
+    //* Just in case /list is authorized
+    final token = await storage.read(key: 'token');
+    return await http.get(Uri.parse('$apiUrl/list$pathDir'), headers: {"cookie": "token=$token;"}).then((response) {
+      if (response.statusCode == 200) {
+        List<ApiListResponse> parsedResponse =
+            jsonDecode(response.body).map((e) => ApiListResponse.fromJson(e)).toList().cast<ApiListResponse>();
+        parsedResponse.sort((a, b) {
+          if (a.isDirectory && b.isDirectory) return a.name.compareTo(b.name);
+          if (a.isDirectory && !b.isDirectory) return -1;
+          if (!a.isDirectory && b.isDirectory) return 1;
+          return a.name.compareTo(b.name);
+        });
+        connectionDone = true;
+        return parsedResponse;
+      } else if (response.statusCode == 401) {
+        fetchDataErrors = '401 Forbidden. Login to access.';
+        connectionDone = true;
+        return null;
+      } else {
+        final statusCode = response.statusCode;
+        fetchDataErrors = 'Error $statusCode. Something went wrong.';
+        connectionDone = true;
+        return null;
+      }
+    });
   }
 
   Future<void> _refreshFileTree() async {
@@ -540,15 +573,24 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<Map<String, dynamic>?> _fetchFileTree() async {
-    final response = await http.get(Uri.parse('$apiUrl/filetree'));
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> fileTree = jsonDecode(response.body);
-      connectionDoneFileTree = true;
-      return fileTree;
-    } else {
-      connectionDoneFileTree = true;
-      return null;
-    }
+    //* Just in case /filetree is authorized
+    final token = await storage.read(key: 'token');
+    return await http.get(Uri.parse('$apiUrl/filetree'), headers: {"cookie": "token=$token;"}).then((response) {
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> fileTree = jsonDecode(response.body);
+        connectionDoneFileTree = true;
+        return fileTree;
+      } else if (response.statusCode == 401) {
+        fetchFileTreeErrors = '401 Forbidden. Login to access.';
+        connectionDoneFileTree = true;
+        return null;
+      } else {
+        final statusCode = response.statusCode;
+        fetchFileTreeErrors = 'Error $statusCode. Something went wrong.';
+        connectionDoneFileTree = true;
+        return null;
+      }
+    });
   }
 
   //* onSelect function for file context menu
@@ -572,6 +614,7 @@ class _MainPageState extends State<MainPage> {
         _renameFile(filePath, scaffoldKey);
         break;
       case ContextMenuItems.download:
+        //FIXME: Downloads in browser won't work if /retrieve requires auth
         final uri = Uri.parse('$fileUrl?download=true');
         canLaunchUrl(uri)
             .then((_) => launchUrl(uri, mode: LaunchMode.externalApplication))
