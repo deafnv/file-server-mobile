@@ -111,7 +111,7 @@ class MultipartRequest extends http.MultipartRequest {
 IconData? getIcon(ApiListResponse file) {
   if (file.isDirectory) return Icons.folder;
   final splitName = file.name.split('.');
-  final extension = splitName[splitName.length - 1];
+  final extension = splitName[splitName.length - 1].toLowerCase();
   if (splitName.length == 1) return null;
   if (['zip', '7z', 'rar'].contains(extension)) return Icons.folder_zip;
   if (['doc', 'docx', 'txt', 'pdf'].contains(extension)) return Icons.article;
