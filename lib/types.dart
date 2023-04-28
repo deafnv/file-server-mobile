@@ -44,6 +44,16 @@ class ImageGalleryImages {
   });
 }
 
+class VideoFile {
+  final String url;
+  final String name;
+
+  const VideoFile({
+    required this.url,
+    required this.name,
+  });
+}
+
 class AudioFile {
   final String url;
   final String name;

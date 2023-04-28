@@ -309,16 +309,31 @@ class _MainPageState extends State<MainPage> {
                                   ),
                                 );
                           } else if (getIcon(_data![index]) == Icons.movie) {
-                            final videoPath = _data![index].path;
-                            storage.read(key: 'token').then((token) => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => VideoPlayerScreen(
-                                      url: '$apiUrl/retrieve$videoPath',
-                                      token: token,
+                            int counter = -1;
+                            int selectedVideoIndex = 0;
+                            final videoPaths = _data!
+                                .map((e) {
+                                  if (getIcon(e) == Icons.movie) {
+                                    final videoPath = e.path;
+                                    counter++;
+                                    if (videoPath == _data![index].path) selectedVideoIndex = counter;
+                                    return VideoFile(url: '$apiUrl/retrieve$videoPath', name: e.name);
+                                  }
+                                })
+                                .whereType<VideoFile>()
+                                .toList();
+                            storage.read(key: 'token').then(
+                                  (token) => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => VideoPlayerScreen(
+                                        urls: videoPaths,
+                                        initialIndex: selectedVideoIndex,
+                                        token: token,
+                                      ),
                                     ),
                                   ),
-                                ));
+                                );
                           } else if (getIcon(_data![index]) == Icons.audio_file) {
                             int counter = -1;
                             int selectedAudioIndex = 0;
