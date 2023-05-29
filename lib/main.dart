@@ -69,6 +69,7 @@ class MyApp extends StatelessWidget {
           primary: Color.fromARGB(251, 88, 88, 88),
           secondary: Colors.lightBlue,
           tertiary: Color.fromARGB(255, 226, 57, 170),
+          error: Colors.red,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ButtonStyle(

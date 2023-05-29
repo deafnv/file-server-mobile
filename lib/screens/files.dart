@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
@@ -21,6 +20,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:path/path.dart' as p;
 import 'package:page_transition/page_transition.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 import 'package:file_server_mobile/types.dart';
 import 'package:file_server_mobile/app_data.dart';
@@ -157,6 +157,154 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
+  List<Widget> _loadColorPicker(GlobalKey<ScaffoldMessengerState> scaffoldKey) {
+    if (selectedFiles.every((file) => file.isDirectory)) {
+      return [
+        IconButton(
+          tooltip: 'Change color',
+          splashRadius: 24,
+          onPressed: () => prefs?.getString('userdata') != null
+              ? showDialog(
+                  context: context,
+                  builder: (context) {
+                    final colorController = TextEditingController(text: '#ffffff');
+                    final textFieldBorderStyle = OutlineInputBorder(
+                      borderSide: BorderSide(width: 2, color: Theme.of(context).colorScheme.secondary),
+                    );
+                    final errorBorderStyle = OutlineInputBorder(
+                      borderSide: BorderSide(width: 2, color: Theme.of(context).colorScheme.error),
+                    );
+                    var validateColor = false;
+
+                    return StatefulBuilder(builder: (BuildContext context, StateSetter setStateDialog) {
+                      return AlertDialog(
+                        title: const Text('Change colors'),
+                        content: SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              BlockPicker(
+                                availableColors: const [
+                                  Colors.red,
+                                  Colors.pinkAccent,
+                                  Colors.pink,
+                                  Colors.deepPurple,
+                                  Colors.purple,
+                                  Colors.indigo,
+                                  Colors.blueAccent,
+                                  Colors.blue,
+                                  Colors.lightBlue,
+                                  Colors.teal,
+                                  Colors.green,
+                                  Colors.lightGreen,
+                                  Colors.lime,
+                                  Colors.yellow,
+                                  Colors.amber,
+                                  Colors.orange,
+                                  Colors.deepOrange,
+                                  Colors.brown,
+                                  Colors.grey,
+                                  Colors.black
+                                ],
+                                pickerColor: Colors.white,
+                                onColorChanged: (color) {
+                                  final colorPicked = color.toHex(leadingHashSign: false).substring(2);
+                                  colorController.text = '#$colorPicked';
+                                },
+                              ),
+                              TextField(
+                                controller: colorController,
+                                cursorColor: Theme.of(context).colorScheme.secondary,
+                                textInputAction: TextInputAction.done,
+                                decoration: InputDecoration(
+                                  labelText: "Hex color",
+                                  labelStyle: const TextStyle(color: Colors.grey),
+                                  enabledBorder: textFieldBorderStyle,
+                                  focusedBorder: textFieldBorderStyle,
+                                  errorBorder: errorBorderStyle,
+                                  focusedErrorBorder: errorBorderStyle,
+                                  errorText: validateColor ? 'Invalid hex color' : null,
+                                ),
+                                onChanged: (value) => setStateDialog(() => validateColor = false),
+                              ),
+                            ],
+                          ),
+                        ),
+                        actions: <Widget>[
+                          SizedBox(
+                            height: 45,
+                            width: 70,
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text(
+                                'Cancel',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            height: 45,
+                            width: 70,
+                            child: TextButton(
+                              onPressed: () {
+                                storage.read(key: 'token').then((token) {
+                                  if (token != null) {
+                                    RegExp hexColorRegex = RegExp(r'^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$');
+                                    final foldersToChange = selectedFiles.map((e) => e.path).toList();
+                                    final finalColor = colorController.text;
+                                    //* Checks if entered hex is valid
+                                    if (!hexColorRegex.hasMatch(colorController.text)) {
+                                      setStateDialog(() {
+                                        validateColor = true;
+                                      });
+                                      return;
+                                    }
+
+                                    http.post(
+                                      Uri.parse('$apiUrl/metadata'),
+                                      body: jsonEncode({
+                                        "directories": foldersToChange,
+                                        "newMetadata": {"color": finalColor}
+                                      }),
+                                      headers: {"cookie": "token=$token;", "content-type": "application/json"},
+                                    ).then((value) {
+                                      if (value.statusCode == 200) {
+                                        showSnackbar(scaffoldKey, 'Changed colors');
+                                      } else {
+                                        showSnackbar(scaffoldKey, 'Something went wrong, try logging in again',
+                                            SnackbarStatus.warning);
+                                      }
+                                    });
+                                  } else {
+                                    showSnackbar(
+                                        scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
+                                  }
+                                  Navigator.pop(context);
+                                  setState(() {
+                                    selectedFiles = [];
+                                    selectMode = false;
+                                  });
+                                });
+                              },
+                              child: const Text(
+                                'Change',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    });
+                  },
+                )
+              : showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning),
+          icon: const Icon(Icons.color_lens),
+        )
+      ];
+    } else {
+      return [];
+    }
+  }
+
   _loadAppBar(GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     if (selectMode) {
       final selectedFilesCount = selectedFiles.length;
@@ -170,6 +318,7 @@ class _MainPageState extends State<MainPage> {
             icon: const Icon(Icons.close)),
         title: Text('$selectedFilesCount File(s) selected'),
         actions: [
+          ..._loadColorPicker(scaffoldKey),
           IconButton(
             tooltip: 'Move',
             splashRadius: 24,
