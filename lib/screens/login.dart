@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:file_server_mobile/screens/files.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -32,8 +31,11 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final addUserBorderStyle = OutlineInputBorder(
+    final textFieldBorderStyle = OutlineInputBorder(
       borderSide: BorderSide(width: 2, color: Theme.of(context).colorScheme.secondary),
+    );
+    final errorBorderStyle = OutlineInputBorder(
+      borderSide: BorderSide(width: 2, color: Theme.of(context).colorScheme.error),
     );
 
     final navigatorKey = Provider.of<AppData>(context).navigatorKey;
@@ -66,10 +68,10 @@ class _LoginPageState extends State<LoginPage> {
                 decoration: InputDecoration(
                   labelText: "Username",
                   labelStyle: const TextStyle(color: Colors.grey),
-                  enabledBorder: addUserBorderStyle,
-                  focusedBorder: addUserBorderStyle,
-                  errorBorder: addUserBorderStyle,
-                  focusedErrorBorder: addUserBorderStyle,
+                  enabledBorder: textFieldBorderStyle,
+                  focusedBorder: textFieldBorderStyle,
+                  errorBorder: errorBorderStyle,
+                  focusedErrorBorder: errorBorderStyle,
                 ),
               ),
               const SizedBox(height: 8),
@@ -81,10 +83,10 @@ class _LoginPageState extends State<LoginPage> {
                 decoration: InputDecoration(
                   labelText: "Password",
                   labelStyle: const TextStyle(color: Colors.grey),
-                  enabledBorder: addUserBorderStyle,
-                  focusedBorder: addUserBorderStyle,
-                  errorBorder: addUserBorderStyle,
-                  focusedErrorBorder: addUserBorderStyle,
+                  enabledBorder: textFieldBorderStyle,
+                  focusedBorder: textFieldBorderStyle,
+                  errorBorder: errorBorderStyle,
+                  focusedErrorBorder: errorBorderStyle,
                 ),
                 obscureText: true,
               ),
