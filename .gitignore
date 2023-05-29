@@ -51,4 +51,4 @@ android/app/src/main/AndroidManifest.xml
 
 google-services.json
 firebase_options.dart
-notes.txt
+notes.md

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
@@ -234,12 +235,18 @@ class _MainPageState extends State<MainPage> {
                 child: ListView.builder(
                   itemCount: _data!.length + 1,
                   itemBuilder: (context, index) {
-                    if (index != _data!.length) {
+                    if (index < _data!.length) {
+                      final hexColor = _data![index].metadata?.color.replaceAll('#', '');
                       return ListTile(
                         tileColor: selectedFiles.contains(_data![index]) ? Colors.grey : Colors.transparent,
                         leading: selectMode && selectedFiles.contains(_data![index])
                             ? const Icon(Icons.done)
-                            : Icon(getIcon(_data![index])),
+                            : Icon(
+                                getIcon(_data![index]),
+                                color: _data![index].metadata != null && hexColor != null && hexColor.isNotEmpty
+                                    ? HexColor.fromHex(hexColor)
+                                    : null,
+                              ),
                         trailing: selectMode
                             ? null
                             : Theme(

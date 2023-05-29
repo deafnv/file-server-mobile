@@ -43,110 +43,111 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       key: _scaffoldKey,
       body: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(30, 80, 30, 20),
-          child: AutofillGroup(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 100),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(50),
-                  child: SizedBox(
-                    width: 200,
-                    child: Image.asset('assets/app_logo.png'),
-                  ),
+        padding: const EdgeInsets.fromLTRB(30, 80, 30, 20),
+        child: AutofillGroup(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 100),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(50),
+                child: SizedBox(
+                  width: 200,
+                  child: Image.asset('assets/app_logo.png'),
                 ),
-                const SizedBox(height: 40),
-                TextField(
-                  controller: usernameController,
-                  autofillHints: const [AutofillHints.username],
-                  cursorColor: Theme.of(context).colorScheme.secondary,
-                  textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
-                    labelText: "Username",
-                    labelStyle: const TextStyle(color: Colors.grey),
-                    enabledBorder: addUserBorderStyle,
-                    focusedBorder: addUserBorderStyle,
-                    errorBorder: addUserBorderStyle,
-                    focusedErrorBorder: addUserBorderStyle,
-                  ),
+              ),
+              const SizedBox(height: 40),
+              TextField(
+                controller: usernameController,
+                autofillHints: const [AutofillHints.username],
+                cursorColor: Theme.of(context).colorScheme.secondary,
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  labelText: "Username",
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  enabledBorder: addUserBorderStyle,
+                  focusedBorder: addUserBorderStyle,
+                  errorBorder: addUserBorderStyle,
+                  focusedErrorBorder: addUserBorderStyle,
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: passwordController,
-                  autofillHints: const [AutofillHints.password],
-                  cursorColor: Theme.of(context).colorScheme.secondary,
-                  textInputAction: TextInputAction.done,
-                  decoration: InputDecoration(
-                    labelText: "Password",
-                    labelStyle: const TextStyle(color: Colors.grey),
-                    enabledBorder: addUserBorderStyle,
-                    focusedBorder: addUserBorderStyle,
-                    errorBorder: addUserBorderStyle,
-                    focusedErrorBorder: addUserBorderStyle,
-                  ),
-                  obscureText: true,
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: passwordController,
+                autofillHints: const [AutofillHints.password],
+                cursorColor: Theme.of(context).colorScheme.secondary,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: "Password",
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  enabledBorder: addUserBorderStyle,
+                  focusedBorder: addUserBorderStyle,
+                  errorBorder: addUserBorderStyle,
+                  focusedErrorBorder: addUserBorderStyle,
                 ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50),
-                  ),
-                  child: const Text(
-                    'Login',
-                    style: TextStyle(fontSize: 24),
-                  ),
-                  onPressed: () async {
-                    showDialog(
-                      barrierDismissible: true,
-                      context: context,
-                      builder: (context) => Center(
-                        child: CircularProgressIndicator(
-                          color: Theme.of(context).colorScheme.secondary,
-                        ),
+                obscureText: true,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                ),
+                child: const Text(
+                  'Login',
+                  style: TextStyle(fontSize: 24),
+                ),
+                onPressed: () async {
+                  showDialog(
+                    barrierDismissible: true,
+                    context: context,
+                    builder: (context) => Center(
+                      child: CircularProgressIndicator(
+                        color: Theme.of(context).colorScheme.secondary,
                       ),
+                    ),
+                  );
+
+                  final username = usernameController.text.trim();
+                  final response = await http.post(
+                    Uri.parse('$apiUrl/authorize/get'),
+                    body: jsonEncode({"user": username}),
+                    headers: {"X-API-Key": passwordController.text.trim(), "content-type": "application/json"},
+                  );
+
+                  //* If response returned with set-cookie header, set cookie
+                  String? rawCookie = response.headers['set-cookie'];
+                  if (rawCookie != null) {
+                    final SharedPreferences prefs = await SharedPreferences.getInstance();
+                    await prefs.setString('userdata', '{"user": "$username"}');
+
+                    AndroidOptions getAndroidOptions() => const AndroidOptions(
+                          encryptedSharedPreferences: true,
+                        );
+                    final storage = FlutterSecureStorage(aOptions: getAndroidOptions());
+
+                    int index = rawCookie.indexOf(';');
+                    await storage.write(
+                      key: 'token',
+                      value: ((index == -1) ? rawCookie : rawCookie.substring(0, index)).replaceAll('token=', ''),
+                      aOptions: getAndroidOptions(),
                     );
 
-                    final username = usernameController.text.trim();
-                    final response = await http.post(
-                      Uri.parse('$apiUrl/authorize/get'),
-                      body: jsonEncode({"user": username}),
-                      headers: {"X-API-Key": passwordController.text.trim(), "content-type": "application/json"},
-                    );
-
-                    //* If response returned with set-cookie header, set cookie
-                    String? rawCookie = response.headers['set-cookie'];
-                    if (rawCookie != null) {
-                      final SharedPreferences prefs = await SharedPreferences.getInstance();
-                      await prefs.setString('userdata', '{"user": "$username"}');
-
-                      AndroidOptions getAndroidOptions() => const AndroidOptions(
-                            encryptedSharedPreferences: true,
-                          );
-                      final storage = FlutterSecureStorage(aOptions: getAndroidOptions());
-
-                      int index = rawCookie.indexOf(';');
-                      await storage.write(
-                        key: 'token',
-                        value: ((index == -1) ? rawCookie : rawCookie.substring(0, index)).replaceAll('token=', ''),
-                        aOptions: getAndroidOptions(),
-                      );
-
-                      _scaffoldKey.currentState!.closeEndDrawer();
-                      navigatorKey.currentState!.pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
-                    } else {
-                      scaffoldKey.currentState!.showSnackBar(const SnackBar(
-                        backgroundColor: Colors.red,
-                        content: Text('Wrong password'),
-                      ));
-                      navigatorKey.currentState!.pop();
-                    }
-                  },
-                ),
-              ],
-            ),
-          )),
+                    _scaffoldKey.currentState!.closeEndDrawer();
+                    navigatorKey.currentState!.pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
+                  } else {
+                    scaffoldKey.currentState!.showSnackBar(const SnackBar(
+                      backgroundColor: Colors.red,
+                      content: Text('Wrong password'),
+                    ));
+                    navigatorKey.currentState!.pop();
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

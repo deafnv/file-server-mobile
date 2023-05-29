@@ -6,6 +6,37 @@ import 'package:http/http.dart' as http;
 
 import 'package:file_server_mobile/main.dart';
 
+extension HexColor on Color {
+  /// String is in the format "aabbcc" or "ffaabbcc" with an optional leading "#".
+  static Color fromHex(String hexString) {
+    final buffer = StringBuffer();
+    if (hexString.length == 6 || hexString.length == 7) buffer.write('ff');
+    buffer.write(hexString.replaceFirst('#', ''));
+    return Color(int.parse(buffer.toString(), radix: 16));
+  }
+
+  /// Prefixes a hash sign if [leadingHashSign] is set to `true` (default is `true`).
+  String toHex({bool leadingHashSign = true}) => '${leadingHashSign ? '#' : ''}'
+      '${alpha.toRadixString(16).padLeft(2, '0')}'
+      '${red.toRadixString(16).padLeft(2, '0')}'
+      '${green.toRadixString(16).padLeft(2, '0')}'
+      '${blue.toRadixString(16).padLeft(2, '0')}';
+}
+
+class Metadata {
+  final String color;
+
+  const Metadata({
+    required this.color,
+  });
+
+  factory Metadata.fromJson(Map<String, dynamic> json) {
+    return Metadata(
+      color: json['color'],
+    );
+  }
+}
+
 class ApiListResponse {
   final String name;
   final String path;
@@ -13,6 +44,7 @@ class ApiListResponse {
   final String created;
   final String modified;
   final bool isDirectory;
+  final Metadata? metadata;
 
   const ApiListResponse({
     required this.name,
@@ -21,16 +53,19 @@ class ApiListResponse {
     required this.created,
     required this.modified,
     required this.isDirectory,
+    this.metadata,
   });
 
   factory ApiListResponse.fromJson(Map<String, dynamic> json) {
     return ApiListResponse(
-        name: json['name'],
-        path: json['path'],
-        size: json['size'],
-        created: json['created'],
-        modified: json['modified'],
-        isDirectory: json['isDirectory']);
+      name: json['name'],
+      path: json['path'],
+      size: json['size'],
+      created: json['created'],
+      modified: json['modified'],
+      isDirectory: json['isDirectory'],
+      metadata: json['metadata'] != null ? Metadata.fromJson(json['metadata']) : null,
+    );
   }
 }
 
