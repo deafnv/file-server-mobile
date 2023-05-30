@@ -370,6 +370,56 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
+  _loadFileIcons(int index) {
+    final hexColor = _data![index].metadata?.color.replaceAll('#', '');
+
+    if (selectMode && selectedFiles.contains(_data![index])) {
+      return const Icon(Icons.done);
+    } else if (_data![index].isShortcut != null) {
+      return Stack(
+        children: [
+          Icon(
+            getIcon(_data![index]),
+            color: _data![index].metadata != null && hexColor != null && hexColor.isNotEmpty
+                ? HexColor.fromHex(hexColor)
+                : null,
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  height: 15,
+                  width: 15,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[600],
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const RotatedBox(
+                  quarterTurns: 3,
+                  child: Icon(
+                    Icons.redo,
+                    size: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else {
+      return Icon(
+        getIcon(_data![index]),
+        color: _data![index].metadata != null && hexColor != null && hexColor.isNotEmpty
+            ? HexColor.fromHex(hexColor)
+            : null,
+      );
+    }
+  }
+
   _loadUI(GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     if (_data != null) {
       if (_data!.isNotEmpty) {
@@ -385,17 +435,9 @@ class _MainPageState extends State<MainPage> {
                   itemCount: _data!.length + 1,
                   itemBuilder: (context, index) {
                     if (index < _data!.length) {
-                      final hexColor = _data![index].metadata?.color.replaceAll('#', '');
                       return ListTile(
                         tileColor: selectedFiles.contains(_data![index]) ? Colors.grey : Colors.transparent,
-                        leading: selectMode && selectedFiles.contains(_data![index])
-                            ? const Icon(Icons.done)
-                            : Icon(
-                                getIcon(_data![index]),
-                                color: _data![index].metadata != null && hexColor != null && hexColor.isNotEmpty
-                                    ? HexColor.fromHex(hexColor)
-                                    : null,
-                              ),
+                        leading: _loadFileIcons(index),
                         trailing: selectMode
                             ? null
                             : Theme(
@@ -708,6 +750,7 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<List<ApiListResponse>?> _fetchData() async {
+    RegExp alphaNumeric = RegExp(r'^[a-zA-Z0-9]+$');
     final pathDir = currentDir != null ? currentDir! : '/';
     //* Just in case /list is authorized
     final token = await storage.read(key: 'token');
@@ -716,9 +759,23 @@ class _MainPageState extends State<MainPage> {
         List<ApiListResponse> parsedResponse =
             jsonDecode(response.body).map((e) => ApiListResponse.fromJson(e)).toList().cast<ApiListResponse>();
         parsedResponse.sort((a, b) {
-          if (a.isDirectory && b.isDirectory) return a.name.compareTo(b.name);
+          final aIsShortcut = a.isShortcut != null;
+          final bIsShortcut = b.isShortcut != null;
+          //* Sort shortcut directories
+          if (aIsShortcut && a.isDirectory && !bIsShortcut && b.isDirectory) return -1;
+          if (!aIsShortcut && a.isDirectory && bIsShortcut && b.isDirectory) return 1;
+
+          //* Sort directories
           if (a.isDirectory && !b.isDirectory) return -1;
           if (!a.isDirectory && b.isDirectory) return 1;
+
+          //* Sort shortcut files
+          if (aIsShortcut && !a.isDirectory && !bIsShortcut && !b.isDirectory) return -1;
+          if (!aIsShortcut && !a.isDirectory && bIsShortcut && !b.isDirectory) return 1;
+
+          if (!alphaNumeric.hasMatch(a.name[0]) && alphaNumeric.hasMatch(b.name[0])) return -1;
+          if (alphaNumeric.hasMatch(a.name[0]) && !alphaNumeric.hasMatch(b.name[0])) return 1;
+
           return a.name.compareTo(b.name);
         });
         connectionDone = true;

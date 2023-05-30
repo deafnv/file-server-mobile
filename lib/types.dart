@@ -37,6 +37,23 @@ class Metadata {
   }
 }
 
+class Shortcut {
+  final String shortcutName;
+  final String shortcutPath;
+
+  const Shortcut({
+    required this.shortcutName,
+    required this.shortcutPath,
+  });
+
+  factory Shortcut.fromJson(Map<String, dynamic> json) {
+    return Shortcut(
+      shortcutName: json['shortcutName'],
+      shortcutPath: json['shortcutPath'],
+    );
+  }
+}
+
 class ApiListResponse {
   final String name;
   final String path;
@@ -44,6 +61,7 @@ class ApiListResponse {
   final String created;
   final String modified;
   final bool isDirectory;
+  final Shortcut? isShortcut;
   final Metadata? metadata;
 
   const ApiListResponse({
@@ -53,6 +71,7 @@ class ApiListResponse {
     required this.created,
     required this.modified,
     required this.isDirectory,
+    this.isShortcut,
     this.metadata,
   });
 
@@ -64,6 +83,7 @@ class ApiListResponse {
       created: json['created'],
       modified: json['modified'],
       isDirectory: json['isDirectory'],
+      isShortcut: json['isShortcut'] != null ? Shortcut.fromJson(json['isShortcut']) : null,
       metadata: json['metadata'] != null ? Metadata.fromJson(json['metadata']) : null,
     );
   }
