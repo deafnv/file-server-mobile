@@ -29,8 +29,7 @@ import 'package:file_server_mobile/screens/drawer.dart';
 import 'package:file_server_mobile/screens/image_viewer.dart';
 import 'package:file_server_mobile/screens/video_player.dart';
 import 'package:file_server_mobile/screens/audio_player.dart';
-import 'package:file_server_mobile/screens/move_select.dart';
-import 'package:file_server_mobile/screens/shortcut_select.dart';
+import 'package:file_server_mobile/screens/directory_select.dart';
 
 enum ContextMenuItems { openinbrowser, copy, rename, shortcut, download }
 
@@ -308,7 +307,6 @@ class _MainPageState extends State<MainPage> {
 
   _loadAppBar(GlobalKey<ScaffoldMessengerState> scaffoldKey) {
     if (selectMode) {
-      final selectedFilesCount = selectedFiles.length;
       return AppBar(
         backgroundColor: const Color.fromARGB(255, 71, 71, 71),
         leading: IconButton(
@@ -317,7 +315,7 @@ class _MainPageState extends State<MainPage> {
               _setSelectMode(false);
             },
             icon: const Icon(Icons.close)),
-        title: Text('$selectedFilesCount File(s) selected'),
+        title: Text(selectedFiles.length == 1 ? '${selectedFiles.length} file' : '${selectedFiles.length} files'),
         actions: [
           ..._loadColorPicker(scaffoldKey),
           IconButton(
@@ -328,15 +326,35 @@ class _MainPageState extends State<MainPage> {
                     context,
                     PageTransition(
                       type: PageTransitionType.leftToRight,
-                      child: MoveSelect(
+                      child: DirectorySelect(
                         currentDir: currentDir,
                         storage: storage,
-                        filesToMove: selectedFiles.map((e) => e.path).toList(),
+                        selectedFiles: selectedFiles.map((e) => e.path).toList(),
+                        method: DirectorySelectMethods.move,
                       ),
                     ),
                   )
                 : showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning),
             icon: const Icon(Icons.drive_file_move_outlined),
+          ),
+          IconButton(
+            tooltip: 'Copy',
+            splashRadius: 24,
+            onPressed: () => prefs?.getString('userdata') != null
+                ? Navigator.pushReplacement(
+                    context,
+                    PageTransition(
+                      type: PageTransitionType.leftToRight,
+                      child: DirectorySelect(
+                        currentDir: currentDir,
+                        storage: storage,
+                        selectedFiles: selectedFiles.map((e) => e.path).toList(),
+                        method: DirectorySelectMethods.copy,
+                      ),
+                    ),
+                  )
+                : showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning),
+            icon: const Icon(Icons.copy),
           ),
           IconButton(
             tooltip: 'Delete',
@@ -840,7 +858,6 @@ class _MainPageState extends State<MainPage> {
       case ContextMenuItems.copy:
         RichClipboard.setData(RichClipboardData(
           text: Uri.parse(fileUrl).toString(),
-          //html: '{"action": "copy", "files": [$fileUrl]}', //TODO: Meant for copying files in app, rn copy parsed link
         )).then((_) => showSnackbar(scaffoldKey, 'Copied link to clipboard'));
         break;
       case ContextMenuItems.rename:
@@ -852,10 +869,11 @@ class _MainPageState extends State<MainPage> {
             context,
             PageTransition(
               type: PageTransitionType.leftToRight,
-              child: ShortcutSelect(
+              child: DirectorySelect(
                 currentDir: currentDir,
                 storage: storage,
-                selectedFile: filePath,
+                selectedFiles: [filePath],
+                method: DirectorySelectMethods.shortcut,
               ),
             ),
           );

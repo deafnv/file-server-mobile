@@ -12,18 +12,67 @@ import 'package:file_server_mobile/types.dart';
 import 'package:file_server_mobile/app_data.dart';
 import 'package:file_server_mobile/screens/files.dart';
 
-class MoveSelect extends StatefulWidget {
-  const MoveSelect({super.key, this.currentDir, required this.storage, required this.filesToMove});
+enum DirectorySelectMethods { move, copy, shortcut }
+
+class DirectorySelectDetails {
+  static final Map<DirectorySelectMethods, String> buttonTextMap = {
+    DirectorySelectMethods.move: 'Move',
+    DirectorySelectMethods.copy: 'Copy',
+    DirectorySelectMethods.shortcut: 'Create shortcut',
+  };
+
+  static final Map<DirectorySelectMethods, String> snackbarTextMap = {
+    DirectorySelectMethods.move: 'Moved file(s)',
+    DirectorySelectMethods.copy: 'Copied file(s)',
+    DirectorySelectMethods.shortcut: 'Created shortcut',
+  };
+
+  static final Map<DirectorySelectMethods, String> apiRouteMap = {
+    DirectorySelectMethods.move: 'move',
+    DirectorySelectMethods.copy: 'copy',
+    DirectorySelectMethods.shortcut: 'shortcut',
+  };
+
+  static final Map<DirectorySelectMethods, String> _appBarTitleMap = {
+    DirectorySelectMethods.move: 'Move to:',
+    DirectorySelectMethods.copy: 'Copy to:',
+    DirectorySelectMethods.shortcut: 'Shortcut to:',
+  };
+
+  static String getAppBarTitle(DirectorySelectMethods method, String currentPath) {
+    return '${_appBarTitleMap[method]!} $currentPath';
+  }
+
+  static String getApiBody(DirectorySelectMethods method, List<String> selectedFiles, String path) {
+    final Map<DirectorySelectMethods, String> apiBodyMap = {
+      DirectorySelectMethods.move: jsonEncode({"pathToFiles": selectedFiles, "newPath": path}),
+      DirectorySelectMethods.copy: jsonEncode({"pathToFiles": selectedFiles, "newPath": path}),
+      DirectorySelectMethods.shortcut: jsonEncode({"target": selectedFiles[0], "currentPath": path}),
+    };
+
+    return apiBodyMap[method]!;
+  }
+}
+
+class DirectorySelect extends StatefulWidget {
+  const DirectorySelect({
+    super.key,
+    this.currentDir,
+    required this.storage,
+    required this.selectedFiles,
+    required this.method,
+  });
 
   final String? currentDir;
   final FlutterSecureStorage storage;
-  final List<String> filesToMove;
+  final List<String> selectedFiles;
+  final DirectorySelectMethods method;
 
   @override
-  State<MoveSelect> createState() => _MoveSelectState();
+  State<DirectorySelect> createState() => _DirectorySelectState();
 }
 
-class _MoveSelectState extends State<MoveSelect> {
+class _DirectorySelectState extends State<DirectorySelect> {
   final apiUrl = dotenv.env['API_URL']!;
 
   String? currentDir;
@@ -180,7 +229,7 @@ class _MoveSelectState extends State<MoveSelect> {
             PageTransition(
               type: PageTransitionType.leftToRight,
               child: MainPage(
-                currentDir: p.dirname(widget.filesToMove[0]) == '/' ? null : p.dirname(widget.filesToMove[0]),
+                currentDir: p.dirname(widget.selectedFiles[0]) == '/' ? null : p.dirname(widget.selectedFiles[0]),
               ),
             ),
           );
@@ -201,14 +250,17 @@ class _MoveSelectState extends State<MoveSelect> {
                     PageTransition(
                       type: PageTransitionType.leftToRight,
                       child: MainPage(
-                        currentDir: p.dirname(widget.filesToMove[0]) == '/' ? null : p.dirname(widget.filesToMove[0]),
+                        currentDir:
+                            p.dirname(widget.selectedFiles[0]) == '/' ? null : p.dirname(widget.selectedFiles[0]),
                       ),
                     ),
                   );
                 }
               },
               icon: const Icon(Icons.arrow_back)),
-          title: Text(currentDir != null ? 'Move to: ${p.basename(currentDir!)}' : 'Move to: Root'),
+          title: Text(currentDir != null
+              ? DirectorySelectDetails.getAppBarTitle(widget.method, p.basename(currentDir!))
+              : DirectorySelectDetails.getAppBarTitle(widget.method, 'Root')),
         ),
         body: _loadUI(scaffoldKey),
         bottomSheet: Container(
@@ -226,7 +278,8 @@ class _MoveSelectState extends State<MoveSelect> {
                     PageTransition(
                       type: PageTransitionType.leftToRight,
                       child: MainPage(
-                        currentDir: p.dirname(widget.filesToMove[0]) == '/' ? null : p.dirname(widget.filesToMove[0]),
+                        currentDir:
+                            p.dirname(widget.selectedFiles[0]) == '/' ? null : p.dirname(widget.selectedFiles[0]),
                       ),
                     ),
                   ),
@@ -243,12 +296,12 @@ class _MoveSelectState extends State<MoveSelect> {
                     widget.storage.read(key: 'token').then((token) {
                       if (token != null) {
                         http.post(
-                          Uri.parse('$apiUrl/move'),
-                          body: jsonEncode({"pathToFiles": widget.filesToMove, "newPath": currentPath}),
+                          Uri.parse('$apiUrl/${DirectorySelectDetails.apiRouteMap[widget.method]}'),
+                          body: DirectorySelectDetails.getApiBody(widget.method, widget.selectedFiles, currentPath),
                           headers: {"cookie": "token=$token;", "content-type": "application/json"},
                         ).then((value) {
                           if (value.statusCode == 200) {
-                            _showSnackbar(scaffoldKey, 'Moved file(s)');
+                            _showSnackbar(scaffoldKey, DirectorySelectDetails.snackbarTextMap[widget.method]!);
                           } else {
                             _showSnackbar(
                                 scaffoldKey, 'Something went wrong, try logging in again', SnackbarStatus.warning);
@@ -267,7 +320,7 @@ class _MoveSelectState extends State<MoveSelect> {
                     });
                   },
                   child: Text(
-                    'Move',
+                    DirectorySelectDetails.buttonTextMap[widget.method]!,
                     style: TextStyle(color: Theme.of(context).colorScheme.secondary),
                   ),
                 ),
