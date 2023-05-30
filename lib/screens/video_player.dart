@@ -53,6 +53,7 @@ class VideoPlayerView extends StatefulWidget {
 class _VideoPlayerViewState extends State<VideoPlayerView> {
   late VideoPlayerController _controller;
   ChewieController? _chewieController;
+  bool videoError = false;
 
   @override
   void initState() {
@@ -74,6 +75,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
 
           setState(() {});
         },
+        onError: (_) => setState(() => videoError = true),
       );
   }
 
@@ -84,44 +86,51 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     super.dispose();
   }
 
+  _loadVideoPlayer() {
+    if (_chewieController != null && _controller.value.isInitialized) {
+      return Chewie(controller: _chewieController!);
+    } else if (videoError) {
+      return const Text('Something went wrong while loading video.');
+    } else {
+      return CircularProgressIndicator(
+        color: Theme.of(context).colorScheme.secondary,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
           Center(
-            child: _chewieController != null && _controller.value.isInitialized
-                ? Chewie(controller: _chewieController!)
-                : Center(
-                    child: CircularProgressIndicator(
-                      color: Theme.of(context).colorScheme.secondary,
-                    ),
-                  ),
+            child: _loadVideoPlayer(),
           ),
-          if (_chewieController != null && _controller.value.isInitialized)
-            SafeArea(
-              child: Visibility(
-                visible: _chewieController!.isFullScreen ? false : true,
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          splashRadius: 24,
-                          onPressed: () => _chewieController!.isFullScreen ? null : Navigator.pop(context),
-                          icon: const Icon(
-                            Icons.arrow_back,
-                            color: Colors.white,
-                          ),
+          SafeArea(
+            child: Visibility(
+              visible: _chewieController != null && _chewieController!.isFullScreen ? false : true,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        splashRadius: 24,
+                        onPressed: () => _chewieController != null && _chewieController!.isFullScreen
+                            ? null
+                            : Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
+          ),
         ],
       ),
     );

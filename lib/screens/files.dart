@@ -4,6 +4,7 @@ import 'dart:isolate';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:provider/provider.dart';
@@ -11,7 +12,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:rich_clipboard/rich_clipboard.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:file_picker/file_picker.dart';
@@ -846,7 +846,7 @@ class _MainPageState extends State<MainPage> {
             .catchError((_) => throw 'Could not launch $fileUrl');
         break;
       case ContextMenuItems.copy:
-        RichClipboard.setData(RichClipboardData(
+        Clipboard.setData(ClipboardData(
           text: Uri.parse(fileUrl).toString(),
         )).then((_) => showSnackbar(scaffoldKey, 'Copied link to clipboard'));
         break;
