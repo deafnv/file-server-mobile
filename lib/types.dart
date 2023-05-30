@@ -23,6 +23,32 @@ extension HexColor on Color {
       '${blue.toRadixString(16).padLeft(2, '0')}';
 }
 
+extension SortResponse on List<ApiListResponse> {
+  void sortResponse() {
+    RegExp alphaNumeric = RegExp(r'^[a-zA-Z0-9]+$');
+    sort((a, b) {
+      final aIsShortcut = a.isShortcut != null;
+      final bIsShortcut = b.isShortcut != null;
+      //* Sort shortcut directories
+      if (aIsShortcut && a.isDirectory && !bIsShortcut && b.isDirectory) return -1;
+      if (!aIsShortcut && a.isDirectory && bIsShortcut && b.isDirectory) return 1;
+
+      //* Sort directories
+      if (a.isDirectory && !b.isDirectory) return -1;
+      if (!a.isDirectory && b.isDirectory) return 1;
+
+      //* Sort shortcut files
+      if (aIsShortcut && !a.isDirectory && !bIsShortcut && !b.isDirectory) return -1;
+      if (!aIsShortcut && !a.isDirectory && bIsShortcut && !b.isDirectory) return 1;
+
+      if (!alphaNumeric.hasMatch(a.name[0]) && alphaNumeric.hasMatch(b.name[0])) return -1;
+      if (alphaNumeric.hasMatch(a.name[0]) && !alphaNumeric.hasMatch(b.name[0])) return 1;
+
+      return a.name.compareTo(b.name);
+    });
+  }
+}
+
 class Metadata {
   final String color;
 

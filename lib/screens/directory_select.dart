@@ -367,12 +367,7 @@ class _DirectorySelectState extends State<DirectorySelect> {
     if (response.statusCode == 200) {
       List<ApiListResponse> parsedResponse =
           jsonDecode(response.body).map((e) => ApiListResponse.fromJson(e)).toList().cast<ApiListResponse>();
-      parsedResponse.sort((a, b) {
-        if (a.isDirectory && b.isDirectory) return a.name.compareTo(b.name);
-        if (a.isDirectory && !b.isDirectory) return -1;
-        if (!a.isDirectory && b.isDirectory) return 1;
-        return a.name.compareTo(b.name);
-      });
+      parsedResponse.sortResponse();
       connectionDone = true;
       return parsedResponse;
     } else {

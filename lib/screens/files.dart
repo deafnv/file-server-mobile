@@ -249,7 +249,9 @@ class _MainPageState extends State<MainPage> {
                                 storage.read(key: 'token').then((token) {
                                   if (token != null) {
                                     RegExp hexColorRegex = RegExp(r'^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$');
-                                    final foldersToChange = selectedFiles.map((e) => e.path).toList();
+                                    final foldersToChange = selectedFiles
+                                        .map((e) => e.isShortcut != null ? e.isShortcut!.shortcutPath : e.path)
+                                        .toList();
                                     final finalColor = colorController.text;
                                     //* Checks if entered hex is valid
                                     if (!hexColorRegex.hasMatch(colorController.text)) {
@@ -329,7 +331,9 @@ class _MainPageState extends State<MainPage> {
                       child: DirectorySelect(
                         currentDir: currentDir,
                         storage: storage,
-                        selectedFiles: selectedFiles.map((e) => e.path).toList(),
+                        selectedFiles: selectedFiles
+                            .map((e) => e.isShortcut != null ? e.isShortcut!.shortcutPath : e.path)
+                            .toList(),
                         method: DirectorySelectMethods.move,
                       ),
                     ),
@@ -348,7 +352,9 @@ class _MainPageState extends State<MainPage> {
                       child: DirectorySelect(
                         currentDir: currentDir,
                         storage: storage,
-                        selectedFiles: selectedFiles.map((e) => e.path).toList(),
+                        selectedFiles: selectedFiles
+                            .map((e) => e.isShortcut != null ? e.isShortcut!.shortcutPath : e.path)
+                            .toList(),
                         method: DirectorySelectMethods.copy,
                       ),
                     ),
@@ -359,7 +365,10 @@ class _MainPageState extends State<MainPage> {
           IconButton(
             tooltip: 'Delete',
             splashRadius: 24,
-            onPressed: () => _deleteFiles(selectedFiles.map((e) => e.path).toList(), scaffoldKey),
+            onPressed: () => _deleteFiles(
+              selectedFiles.map((e) => e.isShortcut != null ? e.isShortcut!.shortcutPath : e.path).toList(),
+              scaffoldKey,
+            ),
             icon: const Icon(Icons.delete_outline),
           ),
           IconButton(
@@ -478,10 +487,11 @@ class _MainPageState extends State<MainPage> {
                                       value: ContextMenuItems.rename,
                                       child: Text("Rename"),
                                     ),
-                                    const PopupMenuItem(
-                                      value: ContextMenuItems.shortcut,
-                                      child: Text("Create shortcut"),
-                                    ),
+                                    if (_data![index].isShortcut == null)
+                                      const PopupMenuItem(
+                                        value: ContextMenuItems.shortcut,
+                                        child: Text("Create shortcut"),
+                                      ),
                                     const PopupMenuDivider(),
                                     const PopupMenuItem(
                                       value: ContextMenuItems.download,
@@ -773,7 +783,6 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<List<ApiListResponse>?> _fetchData() async {
-    RegExp alphaNumeric = RegExp(r'^[a-zA-Z0-9]+$');
     final pathDir = currentDir != null ? currentDir! : '/';
     //* Just in case /list is authorized
     final token = await storage.read(key: 'token');
@@ -781,26 +790,7 @@ class _MainPageState extends State<MainPage> {
       if (response.statusCode == 200) {
         List<ApiListResponse> parsedResponse =
             jsonDecode(response.body).map((e) => ApiListResponse.fromJson(e)).toList().cast<ApiListResponse>();
-        parsedResponse.sort((a, b) {
-          final aIsShortcut = a.isShortcut != null;
-          final bIsShortcut = b.isShortcut != null;
-          //* Sort shortcut directories
-          if (aIsShortcut && a.isDirectory && !bIsShortcut && b.isDirectory) return -1;
-          if (!aIsShortcut && a.isDirectory && bIsShortcut && b.isDirectory) return 1;
-
-          //* Sort directories
-          if (a.isDirectory && !b.isDirectory) return -1;
-          if (!a.isDirectory && b.isDirectory) return 1;
-
-          //* Sort shortcut files
-          if (aIsShortcut && !a.isDirectory && !bIsShortcut && !b.isDirectory) return -1;
-          if (!aIsShortcut && !a.isDirectory && bIsShortcut && !b.isDirectory) return 1;
-
-          if (!alphaNumeric.hasMatch(a.name[0]) && alphaNumeric.hasMatch(b.name[0])) return -1;
-          if (alphaNumeric.hasMatch(a.name[0]) && !alphaNumeric.hasMatch(b.name[0])) return 1;
-
-          return a.name.compareTo(b.name);
-        });
+        parsedResponse.sortResponse();
         connectionDone = true;
         return parsedResponse;
       } else if (response.statusCode == 401) {
@@ -861,7 +851,11 @@ class _MainPageState extends State<MainPage> {
         )).then((_) => showSnackbar(scaffoldKey, 'Copied link to clipboard'));
         break;
       case ContextMenuItems.rename:
-        _renameFile(filePath, scaffoldKey);
+        _renameFile(
+          _data![index].name,
+          _data![index].isShortcut != null ? _data![index].isShortcut!.shortcutPath : filePath,
+          scaffoldKey,
+        );
         break;
       case ContextMenuItems.shortcut:
         if (prefs?.getString('userdata') != null) {
@@ -893,8 +887,8 @@ class _MainPageState extends State<MainPage> {
   }
 
   //* State changing interactions
-  void _renameFile(String filePath, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
-    final newFileNameController = TextEditingController(text: p.basename(filePath));
+  void _renameFile(String name, String filePath, GlobalKey<ScaffoldMessengerState> scaffoldKey) {
+    final newFileNameController = TextEditingController(text: name);
     final textFieldBorderStyle = OutlineInputBorder(
       borderSide: BorderSide(width: 2, color: Theme.of(context).colorScheme.secondary),
     );
