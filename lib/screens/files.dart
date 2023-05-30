@@ -30,8 +30,9 @@ import 'package:file_server_mobile/screens/image_viewer.dart';
 import 'package:file_server_mobile/screens/video_player.dart';
 import 'package:file_server_mobile/screens/audio_player.dart';
 import 'package:file_server_mobile/screens/move_select.dart';
+import 'package:file_server_mobile/screens/shortcut_select.dart';
 
-enum ContextMenuItems { openinbrowser, copy, rename, download }
+enum ContextMenuItems { openinbrowser, copy, rename, shortcut, download }
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key, this.currentDir});
@@ -370,57 +371,57 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
-  _loadFileIcons(int index) {
-    final hexColor = _data![index].metadata?.color.replaceAll('#', '');
-
-    if (selectMode && selectedFiles.contains(_data![index])) {
-      return const Icon(Icons.done);
-    } else if (_data![index].isShortcut != null) {
-      return Stack(
-        children: [
-          Icon(
-            getIcon(_data![index]),
-            color: _data![index].metadata != null && hexColor != null && hexColor.isNotEmpty
-                ? HexColor.fromHex(hexColor)
-                : null,
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  height: 15,
-                  width: 15,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[600],
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const RotatedBox(
-                  quarterTurns: 3,
-                  child: Icon(
-                    Icons.redo,
-                    size: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-    } else {
-      return Icon(
-        getIcon(_data![index]),
-        color: _data![index].metadata != null && hexColor != null && hexColor.isNotEmpty
-            ? HexColor.fromHex(hexColor)
-            : null,
-      );
-    }
-  }
-
   _loadUI(GlobalKey<ScaffoldMessengerState> scaffoldKey) {
+    loadFileIcons(int index) {
+      final hexColor = _data![index].metadata?.color.replaceAll('#', '');
+
+      if (selectMode && selectedFiles.contains(_data![index])) {
+        return const Icon(Icons.done);
+      } else if (_data![index].isShortcut != null) {
+        return Stack(
+          children: [
+            Icon(
+              getIcon(_data![index]),
+              color: _data![index].metadata != null && hexColor != null && hexColor.isNotEmpty
+                  ? HexColor.fromHex(hexColor)
+                  : null,
+            ),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    height: 15,
+                    width: 15,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[600],
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const RotatedBox(
+                    quarterTurns: 3,
+                    child: Icon(
+                      Icons.redo,
+                      size: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      } else {
+        return Icon(
+          getIcon(_data![index]),
+          color: _data![index].metadata != null && hexColor != null && hexColor.isNotEmpty
+              ? HexColor.fromHex(hexColor)
+              : null,
+        );
+      }
+    }
+
     if (_data != null) {
       if (_data!.isNotEmpty) {
         return Stack(
@@ -437,7 +438,7 @@ class _MainPageState extends State<MainPage> {
                     if (index < _data!.length) {
                       return ListTile(
                         tileColor: selectedFiles.contains(_data![index]) ? Colors.grey : Colors.transparent,
-                        leading: _loadFileIcons(index),
+                        leading: loadFileIcons(index),
                         trailing: selectMode
                             ? null
                             : Theme(
@@ -458,6 +459,10 @@ class _MainPageState extends State<MainPage> {
                                     const PopupMenuItem(
                                       value: ContextMenuItems.rename,
                                       child: Text("Rename"),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: ContextMenuItems.shortcut,
+                                      child: Text("Create shortcut"),
                                     ),
                                     const PopupMenuDivider(),
                                     const PopupMenuItem(
@@ -840,6 +845,23 @@ class _MainPageState extends State<MainPage> {
         break;
       case ContextMenuItems.rename:
         _renameFile(filePath, scaffoldKey);
+        break;
+      case ContextMenuItems.shortcut:
+        if (prefs?.getString('userdata') != null) {
+          Navigator.pushReplacement(
+            context,
+            PageTransition(
+              type: PageTransitionType.leftToRight,
+              child: ShortcutSelect(
+                currentDir: currentDir,
+                storage: storage,
+                selectedFile: filePath,
+              ),
+            ),
+          );
+        } else {
+          showSnackbar(scaffoldKey, 'You need to log in for this action', SnackbarStatus.warning);
+        }
         break;
       case ContextMenuItems.download:
         //FIXME: Downloads in browser won't work if /retrieve requires auth

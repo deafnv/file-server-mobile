@@ -12,18 +12,18 @@ import 'package:file_server_mobile/types.dart';
 import 'package:file_server_mobile/app_data.dart';
 import 'package:file_server_mobile/screens/files.dart';
 
-class MoveSelect extends StatefulWidget {
-  const MoveSelect({super.key, this.currentDir, required this.storage, required this.filesToMove});
+class ShortcutSelect extends StatefulWidget {
+  const ShortcutSelect({super.key, this.currentDir, required this.storage, required this.selectedFile});
 
   final String? currentDir;
   final FlutterSecureStorage storage;
-  final List<String> filesToMove;
+  final String selectedFile;
 
   @override
-  State<MoveSelect> createState() => _MoveSelectState();
+  State<ShortcutSelect> createState() => _ShortcutSelectState();
 }
 
-class _MoveSelectState extends State<MoveSelect> {
+class _ShortcutSelectState extends State<ShortcutSelect> {
   final apiUrl = dotenv.env['API_URL']!;
 
   String? currentDir;
@@ -180,7 +180,7 @@ class _MoveSelectState extends State<MoveSelect> {
             PageTransition(
               type: PageTransitionType.leftToRight,
               child: MainPage(
-                currentDir: p.dirname(widget.filesToMove[0]) == '/' ? null : p.dirname(widget.filesToMove[0]),
+                currentDir: p.dirname(widget.selectedFile) == '/' ? null : p.dirname(widget.selectedFile),
               ),
             ),
           );
@@ -200,15 +200,13 @@ class _MoveSelectState extends State<MoveSelect> {
                     context,
                     PageTransition(
                       type: PageTransitionType.leftToRight,
-                      child: MainPage(
-                        currentDir: p.dirname(widget.filesToMove[0]) == '/' ? null : p.dirname(widget.filesToMove[0]),
-                      ),
+                      child: MainPage(currentDir: p.dirname(widget.selectedFile)),
                     ),
                   );
                 }
               },
               icon: const Icon(Icons.arrow_back)),
-          title: Text(currentDir != null ? 'Move to: ${p.basename(currentDir!)}' : 'Move to: Root'),
+          title: Text(currentDir != null ? 'Shortcut to: ${p.basename(currentDir!)}' : 'Shortcut to: Root'),
         ),
         body: _loadUI(scaffoldKey),
         bottomSheet: Container(
@@ -226,7 +224,7 @@ class _MoveSelectState extends State<MoveSelect> {
                     PageTransition(
                       type: PageTransitionType.leftToRight,
                       child: MainPage(
-                        currentDir: p.dirname(widget.filesToMove[0]) == '/' ? null : p.dirname(widget.filesToMove[0]),
+                        currentDir: p.dirname(widget.selectedFile) == '/' ? null : p.dirname(widget.selectedFile),
                       ),
                     ),
                   ),
@@ -238,17 +236,16 @@ class _MoveSelectState extends State<MoveSelect> {
                 const SizedBox(width: 16),
                 TextButton(
                   onPressed: () {
-                    //TODO: Prevent moving into same directory
                     final currentPath = currentDir != null ? currentDir! : '/';
                     widget.storage.read(key: 'token').then((token) {
                       if (token != null) {
                         http.post(
-                          Uri.parse('$apiUrl/move'),
-                          body: jsonEncode({"pathToFiles": widget.filesToMove, "newPath": currentPath}),
+                          Uri.parse('$apiUrl/shortcut'),
+                          body: jsonEncode({"target": widget.selectedFile, "currentPath": currentPath}),
                           headers: {"cookie": "token=$token;", "content-type": "application/json"},
                         ).then((value) {
                           if (value.statusCode == 200) {
-                            _showSnackbar(scaffoldKey, 'Moved file(s)');
+                            _showSnackbar(scaffoldKey, 'Created shortcut');
                           } else {
                             _showSnackbar(
                                 scaffoldKey, 'Something went wrong, try logging in again', SnackbarStatus.warning);
@@ -267,7 +264,7 @@ class _MoveSelectState extends State<MoveSelect> {
                     });
                   },
                   child: Text(
-                    'Move',
+                    'Create shortcut',
                     style: TextStyle(color: Theme.of(context).colorScheme.secondary),
                   ),
                 ),
